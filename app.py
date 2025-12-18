@@ -1,3 +1,5 @@
+st.write("DEBUG:", st.session_state.logged_in)
+
 import streamlit as st
 import swisseph as swe
 from datetime import datetime, timedelta, date
@@ -10,7 +12,9 @@ from timezonefinder import TimezoneFinder
 
 
 # ஆப் அமைப்புகள்
-st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")
+st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 # ---------- SESSION STATE ----------
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
