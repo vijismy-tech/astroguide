@@ -7,7 +7,7 @@ import pytz
 st.set_page_config(page_title="Professional IST Panchangam", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
-# --- CSS ஸ்டைலிங் (Fixed Syntax) ---
+# --- CSS ஸ்டைலிங் ---
 st.markdown("""
     <style>
     .stApp { background-color: #FDFCF0; }
@@ -40,7 +40,6 @@ def get_detailed_ist_panchang(date_obj):
     tithi_idx = int(((m_pos - s_pos) % 360) / 12)
     yog_idx = int(((m_pos + s_pos) % 360) / (360/27))
 
-    # நேரக் கணக்கீடு
     def calc_end_time(jd_start, current_val, calc_type):
         temp_jd = jd_start
         step = 0.01 
@@ -76,16 +75,26 @@ st.markdown("<h1 class='header-style'>🔱 அஸ்ட்ரோ கைடு - 
 
 with st.sidebar:
     st.header("🗓️ காலண்டர்")
-    selected_date = st.date_input("தேதியைத் தேர்ந்தெடுக்கவும்:", datetime.now(IST))
+    # இந்திய நேரப்படி இன்றைய தேதியை எடுத்தல்
+    now_ist = datetime.now(IST)
+    selected_date = st.date_input("தேதியைத் தேர்ந்தெடுக்கவும்:", now_ist)
 
 p = get_detailed_ist_panchang(selected_date)
 
-# HTML Table Construction
-paksha_class = "waxing" if p['paksha'] == "வளர்பிறை" else "waning"
+# பக்கத்தின் நிறம் மாற Tag செட் செய்தல்
+pak_class = "waxing" if p['paksha'] == "வளர்பிறை" else "waning"
 
-table_html = f"""
+# அட்டவணை உருவாக்கம்
+table_content = f"""
 <table class="panchang-table">
     <tr><th>அங்கம்</th><th>விளக்கம் (Asia/Kolkata நேரப்படி)</th></tr>
-    <tr><td>📅 <b>வாரம் & பக்கம்</b></td><td>{p['wara']} | <span class="status-tag {paksha_class}">{p['paksha']}</span></td></tr>
+    <tr><td>📅 <b>வாரம் & பக்கம்</b></td><td>{p['wara']} | <span class="status-tag {pak_class}">{p['paksha']}</span></td></tr>
     <tr><td>🌙 <b>திதி சஞ்சாரம்</b></td><td><b>{p['tithi']}</b> (இன்று {p['tithi_end']} வரை), பிறகு <b>{p['next_tithi']}</b></td></tr>
-    <tr><td>⭐ <b>நстройство சஞ்சாரம்</b></td><td><b>{p['nak']}
+    <tr><td>⭐ <b>நட்சத்திர சஞ்சாரம்</b></td><td><b>{p['nak']}</b> (இன்று {p['nak_end']} வரை), பிறகு <b>{p['next_nak']}</b></td></tr>
+    <tr><td>♈ <b>இன்றைய ராசி / யோகம்</b></td><td>ராசி: {p['raasi']} | யோகம்: {p['yogam']}</td></tr>
+    <tr style="background-color: #FFF0F0;"><td>🚫 <b>அசுப நேரங்கள்</b></td><td>ராகு: {p['rahu']} | எமகண்டம்: {p['yema']} | குளிகை: {p['kuli']}</td></tr>
+    <tr><td>☀️ <b>முக்கிய நேரங்கள்</b></td><td>உதயம்: 06:35 AM | நல்ல நேரம்: 10:45 AM-11:45 AM | அபிஜித்: 11:55 AM-12:40 PM</td></tr>
+</table>
+"""
+
+st.markdown(table_content, unsafe_allow_html=True)
