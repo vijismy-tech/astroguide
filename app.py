@@ -7,46 +7,11 @@ from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
-ADMIN_WHATSAPP = "919876543210"
 
 
 # ஆப் அமைப்புகள்
 st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
-# ---------------- LOGIN / SIGNUP ----------------
-ADMIN_WHATSAPP = "919876543210"  # 🔁 change to your number
-
-st.sidebar.markdown("## 🔐 User Login / Signup")
-
-user_name = st.sidebar.text_input("👤 Your Name")
-user_whatsapp = st.sidebar.text_input("📱 WhatsApp Number", placeholder="e.g. 9876543210")
-
-action = st.sidebar.radio("Choose Action", ["Login", "Sign Up"])
-
-if st.sidebar.button("Continue via WhatsApp"):
-    if user_whatsapp.strip() == "":
-        st.sidebar.error("Please enter WhatsApp number")
-    else:
-        message = f"""
-Astro Guide App - {action}
-
-Name: {user_name}
-WhatsApp: {user_whatsapp}
-
-Requesting access.
-        """.strip()
-
-        whatsapp_url = (
-            f"https://wa.me/{ADMIN_WHATSAPP}"
-            f"?text={message.replace(' ', '%20').replace('\n', '%0A')}"
-        )
-
-        st.sidebar.success("Opening WhatsApp…")
-        st.sidebar.markdown(
-            f"[👉 Click here if WhatsApp didn't open]({whatsapp_url})",
-            unsafe_allow_html=True
-        )
-
 
 # --- CSS வடிவமைப்பு ---
 st.markdown("""
