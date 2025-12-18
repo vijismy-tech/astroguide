@@ -25,23 +25,25 @@ st.markdown("""
 
 districts = {
     "அரியலூர்": [11.1401, 79.0786], "சென்னை": [13.0827, 80.2707], "கோயம்புத்தூர்": [11.0168, 76.9558],
-    "கடலூர்": [11.7480, 79.7714], "தர்மபுரி": [12.1271, 78.1582], "திண்டுக்கல்": [10.3673, 77.9803],
-    "ஈரோடு": [11.3410, 77.7172], "காஞ்சிபுரம்": [12.8342, 79.7036], "மதுரை": [9.9252, 78.1198],
-    "நாகப்பட்டினம்": [10.7672, 79.8444], "நாமக்கல்": [11.2189, 78.1674], "புதுக்கோட்டை": [10.3797, 78.8202],
-    "இராமநாதபுரம்": [9.3639, 78.8395], "சேலம்": [11.6643, 78.1460], "தஞ்சாவூர்": [10.7870, 79.1378],
-    "திருச்சிராப்பள்ளி": [10.7905, 78.7047], "திருநெல்வேலி": [8.7139, 77.7567], "வேலூர்": [12.9165, 79.1325]
+    "மதுரை": [9.9252, 78.1198], "திருச்சிராப்பள்ளி": [10.7905, 78.7047], "திருநெல்வேலி": [8.7139, 77.7567],
+    "சேலம்": [11.6643, 78.1460], "தஞ்சாவூர்": [10.7870, 79.1378], "வேலூர்": [12.9165, 79.1325]
 }
 
 def get_precise_panchang(date_obj, lat_val, lon_val):
     lat, lon = float(lat_val), float(lon_val)
     y, m, d = int(date_obj.year), int(date_obj.month), int(date_obj.day)
     
+    # 0.0 UT = 5:30 AM IST
     jd_ut = swe.julday(y, m, d, 0.0) 
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe.set_topo(lon, lat, 0.0)
 
-    SUN, MOON = 0, 1
+    # கிரகக் குறியீடுகள் (Strict Integer)
+    SUN = 0
+    MOON = 1
     FLAG_SID = int(swe.FLG_SIDEREAL)
+    RISE = int(swe.CALC_RISE)
+    SET = int(swe.CALC_SET)
 
     def get_raw_astronomy(jd):
         m_res, _ = swe.calc_ut(jd, MOON, FLAG_SID)
@@ -50,6 +52,7 @@ def get_precise_panchang(date_obj, lat_val, lon_val):
         diff = (m_deg - s_deg) % 360
         return m_deg, s_deg, int(diff / 12), int(m_deg / (360/27)), int(((m_deg + s_deg) % 360) / (360/27)), int(diff / 6) % 11
 
+    # --- உங்கள் 35-Iteration பாகை கணக்கீடு ---
     def find_boundary(jd_base, current_idx, calc_type):
         low, high = 0.0, 1.3 
         for _ in range(35):
@@ -64,9 +67,9 @@ def get_precise_panchang(date_obj, lat_val, lon_val):
     t_end_dt = find_boundary(jd_ut, t_now, "tithi")
     n_end_dt = find_boundary(jd_ut, n_now, "nak")
 
-    # உதய அஸ்தமனக் கணக்கீடு
-    rise_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, int(swe.CALC_RISE))
-    set_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, int(swe.CALC_SET))
+    # உதய அஸ்தமனக் கணக்கீடு (Integer Fix)
+    rise_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, RISE)
+    set_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, SET)
     
     sunrise = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=float(rise_res[1])-jd_ut)).strftime("%I:%M %p")
     sunset = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=float(set_res[1])-jd_ut)).strftime("%I:%M %p")
@@ -77,8 +80,8 @@ def get_precise_panchang(date_obj, lat_val, lon_val):
 
     return {
         "m_deg": round(m_start, 2), "sunrise": sunrise, "sunset": sunset,
-        "tamil": f"{t_month} {t_date}", "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()],
-        "tithi": ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோடசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோடசி", "சதுர்த்தசி", "அமாவாசை"][t_now % 30],
+        "tamil": f"{t_month} {t_date}", "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][int(date_obj.weekday())],
+        "tithi": ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"][t_now % 30],
         "t_end": t_end_dt.strftime("%I:%M %p"),
         "nak": ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"][n_now % 27],
         "n_end": n_end_dt.strftime("%I:%M %p"),
@@ -110,4 +113,4 @@ try:
     </table>
     """, unsafe_allow_html=True)
 except Exception as e:
-    st.error(f"பிழை: {e}")
+    st.error(f"பிழை: {str(e)}")
