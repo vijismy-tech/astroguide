@@ -10,7 +10,8 @@ from timezonefinder import TimezoneFinder
 
 
 # ஆப் அமைப்புகள்
-st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")if "logged_in" not in st.session_state:
+st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")
+if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 # ---------- SESSION STATE ----------
