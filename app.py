@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 
 # ஆப் அமைப்புகள்
-st.set_page_config(page_title="Professional Tamil Panchangam", layout="wide")
+st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
 # --- CSS வடிவமைப்பு (Design மாறவில்லை) ---
@@ -28,9 +28,9 @@ districts = {
     "சேலம்": [11.6643, 78.1460], "தஞ்சாவூர்": [10.7870, 79.1378], "வேலூர்": [12.9165, 79.1325]
 }
 
-def get_accurate_panchang_final(date_obj, lat_val, lon_val):
+def get_final_stable_data(date_obj, lat_val, lon_val):
     lat, lon = float(lat_val), float(lon_val)
-    # Date values must be integers
+    # தேதி மதிப்புகளை கண்டிப்பாக Integer ஆக மாற்றுதல்
     y, m, d = int(date_obj.year), int(date_obj.month), int(date_obj.day)
     
     # 0.0 UT = 5:30 AM IST
@@ -38,22 +38,27 @@ def get_accurate_panchang_final(date_obj, lat_val, lon_val):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe.set_topo(lon, lat, 0.0)
 
+    # கிரகக் குறியீடுகளை எண்களாக (C-style integers) உறுதிப்படுத்துதல்
+    SUN = 0
+    MOON = 1
+    FLAG = swe.FLG_SIDEREAL
+
     def get_raw_astro(jd):
-        # Flags must be integers
-        flags = int(swe.FLG_SIDEREAL)
-        m_pos, _ = swe.calc_ut(jd, int(swe.MOON), flags)
-        s_pos, _ = swe.calc_ut(jd, int(swe.SUN), flags)
+        # நிலவு மற்றும் சூரிய பாகை
+        m_res, _ = swe.calc_ut(jd, MOON, FLAG)
+        s_res, _ = swe.calc_ut(jd, SUN, FLAG)
         
-        # Houses/Lakkina
+        # லக்கின கணக்கீடு - Placidus
         res, _ = swe.houses(jd, lat, lon, b'P')
         ayan = swe.get_ayanamsa_ut(jd)
         ascendant = (res[0] - ayan) % 360  
         
-        t_idx = int(((m_pos[0] - s_pos[0]) % 360) / 12)
-        n_idx = int(m_pos[0] / (360/27))
-        return m_pos[0], s_pos[0], t_idx, n_idx, ascendant
+        m_pos, s_pos = m_res[0], s_res[0]
+        t_idx = int(((m_pos - s_pos) % 360) / 12)
+        n_idx = int(m_pos / (360/27))
+        return m_pos, s_pos, t_idx, n_idx, ascendant
 
-    # --- பழைய பாகை கணக்கீடு (35 Iterations) பாதுகாக்கப்பட்டது ---
+    # --- பழைய துல்லியமான பாகை கணக்கீடு (35 Iterations) ---
     def find_boundary(jd_base, current_idx, c_type):
         low, high = 0.0, 1.3
         for _ in range(35):
@@ -67,25 +72,25 @@ def get_accurate_panchang_final(date_obj, lat_val, lon_val):
     m_deg, s_deg, t_now, n_now, l_deg = get_raw_astro(jd_ut)
     t_end_dt = find_boundary(jd_ut, t_now, "tithi")
 
-    # Rise/Set Calculation with Integer casting for planet
-    rise_res = swe.rise_trans(jd_ut, int(swe.SUN), lon, lat, 0, int(swe.CALC_RISE))
-    set_res = swe.rise_trans(jd_ut, int(swe.SUN), lon, lat, 0, int(swe.CALC_SET))
+    # Rise/Set கணக்கீடு - Flags மற்றும் Planet ID களை எண்களாகக் கொடுத்தல்
+    rise_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, swe.CALC_RISE)
+    set_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, swe.CALC_SET)
     
     sunrise = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=rise_res[1]-jd_ut)).strftime("%I:%M %p")
     sunset = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=set_res[1]-jd_ut)).strftime("%I:%M %p")
 
-    # Tamil Date & Months
+    # தமிழ் தேதி
     t_months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
     tamil_month = t_months[int(s_deg / 30) % 12]
     tamil_date = int(s_deg % 30) + 1
 
-    # Raasi/Lakkina Names
+    # லக்கினம் மற்றும் இருப்பு
     raasis = ["மேஷம்", "ரிஷபம்", "மிதுனம்", "கடகம்", "சிம்மம்", "கன்னி", "துலாம்", "விருச்சிகம்", "தனுசு", "மகரம்", "கும்பம்", "மீனம்"]
     curr_lakkina = raasis[int(l_deg / 30) % 12]
     l_balance = round(30 - (l_deg % 30), 2)
 
     tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
-    wara = ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()]
+    wara = ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][int(date_obj.weekday())]
 
     return {
         "tamil": f"{tamil_month} {tamil_date}", "sunrise": sunrise, "sunset": sunset,
@@ -97,13 +102,13 @@ def get_accurate_panchang_final(date_obj, lat_val, lon_val):
 st.markdown("<h1 class='header-style'>🔱 பிழையற்ற திருக்கணித பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.header("⚙️ அமைப்புகள்")
     selected_dist = st.selectbox("மாவட்டத்தைத் தேர்ந்தெடுக்கவும்:", list(districts.keys()))
     selected_date = st.date_input("தேதியைத் தேர்ந்தெடுக்கவும்:", datetime.now(IST))
 
 try:
     lat, lon = districts[selected_dist]
-    p = get_accurate_panchang_final(selected_date, lat, lon)
+    p = get_final_stable_data(selected_date, lat, lon)
 
     st.markdown(f"<div class='special-note'>📅 தமிழ் தேதி: {p['tamil']} | கிழமை: {p['wara']}</div>", unsafe_allow_html=True)
 
@@ -118,4 +123,4 @@ try:
     """, unsafe_allow_html=True)
 
 except Exception as e:
-    st.error(f"கணக்கீட்டில் பிழை: {e}")
+    st.error(f"கணக்கீட்டில் பிழை: {str(e)}")
