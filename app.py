@@ -53,39 +53,40 @@ def get_panchang_data(city_name, date_obj):
 st.sidebar.title("🌟 Astro Guide")
 menu = ["முகப்பு", "🏹 ஜாமக்கோள்", "🎓 கற்றல் மையம்", "📞 ஆலோசனை"]
 choice = st.sidebar.radio("பக்கங்கள்", menu)
-
 if choice == "முகப்பு":
-    st.title("தினசரி பஞ்சாங்கம் & சந்திராஷ்டமம்")
-    col1, col2 = st.columns([1, 2])
+    st.title("🗓️ தினசரி பஞ்சாங்கம்")
     
-    with col1:
-        city = st.text_input("உங்கள் ஊர்:", "Chennai")
-        today = st.date_input("தேதி:", datetime.now())
-        tithi, nak, c_star, lat, lon = get_panchang_data(city, today)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="panchang-card">
-            <h3>📍 {city} பஞ்சாங்கம்</h3>
-            <p><b>திதி:</b> {tithi}</p>
-            <p><b>நட்சத்திரம்:</b> {nak}</p>
-            <hr>
-            <p style='color: red;'>⚠️ <b>இன்றைய சந்திராஷ்டம நட்சத்திரம்:</b> {c_star}</p>
-            <p style='font-size: 0.8em;'>அட்சரேகை: {lat} | தீர்க்கரேகை: {lon}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-elif choice == "🏹 ஜாமக்கோள்":
-    st.title("ஜாமக்கோள் பிரசன்னம்")
-    st.table([["சனி", "ராகு", "சுக்கிரன்"], ["செவ்வாய்", "உதயம்", "புதன்"], ["குரு", "கேது", "சந்திரன்"]])
-    st.info("ஜாமக்கோள் கிரக நிலைகள் விரைவில் முழுமையாக இணைக்கப்படும்.")
-
-elif choice == "🎓 கற்றல் மையம்":
-    st.title("ஜோதிடப் பயிற்சி")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    st.write("PDF கோப்புகள் இங்கே பதிவேற்றப்படும்.")
-
-elif choice == "📞 ஆலோசனை":
-    st.title("ஜோதிடர் ஆலோசனை")
-    st.subheader("ஜோதிடர் அருண்")
-    st.link_button("WhatsApp மூலம் பேச", "https://wa.me/919000000000")
+    # ஒரு அழகான கார்டு போன்ற அமைப்பு
+    with st.container():
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            st.markdown("### 📅 தேதி தேர்வு")
+            # தேதி மாற்றும் ஐகான் மற்றும் பெட்டி
+            today = st.date_input("", datetime.now(), help="தேதியை மாற்ற இங்கே கிளிக் செய்யவும்")
+            
+            city = st.text_input("📍 ஊர் (City):", "Chennai")
+            tithi, nak, c_star, lat, lon = get_panchang_data(city, today)
+            
+        with col2:
+            st.markdown(f"""
+            <div style="background-color: #ffffff; padding: 20px; border-radius: 15px; border: 1px solid #FFD700; text-align: center;">
+                <h2 style="color: #FF8C00; margin-bottom: 5px;">{city} - பஞ்சாங்கம்</h2>
+                <p style="font-size: 1.1em; color: #555;">{today.strftime('%d %B, %Y')}</p>
+                <hr style="border: 0.5px solid #eee;">
+                <div style="display: flex; justify-content: space-around;">
+                    <div>
+                        <p style="margin:0; color: gray;">திதி</p>
+                        <h4 style="color: #4B0082;">🌙 {tithi}</h4>
+                    </div>
+                    <div>
+                        <p style="margin:0; color: gray;">நட்சத்திரம்</p>
+                        <h4 style="color: #006400;">⭐ {nak}</h4>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; padding: 10px; background-color: #FFF0F0; border-radius: 10px;">
+                    <p style="margin:0; color: #D32F2F; font-weight: bold;">⚠️ சந்திராஷ்டமம்</p>
+                    <h4 style="color: #D32F2F;">{c_star}</h4>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
