@@ -1,82 +1,76 @@
 import streamlit as st
-from datetime import datetime
+import swisseph as swe
+from datetime import datetime, timedelta
+from geopy.geocoders import Nominatim
 
-# ஆப் கட்டமைப்பு
-st.set_page_config(page_title="Astro Guide Pro", layout="wide")
+# ஆப் டிசைன்
+st.set_page_config(page_title="Astro Guide Calendar", layout="wide")
 
-# --- நவீன CSS வடிவமைப்பு ---
+# --- CSS வடிவமைப்பு ---
 st.markdown("""
     <style>
-    .stApp { background-color: #FFFDF5; }
-    .main-title { color: #800000; text-align: center; font-family: 'Tamil'; font-weight: 900; margin-bottom: 20px; }
-    
-    /* தகவல்கள் அடங்கிய மென்மையான கார்டு */
+    .stApp { background-color: #F9F7F2; }
+    .header-style { color: #800000; text-align: center; font-family: 'Tamil'; font-weight: 900; padding: 10px; }
     .glass-card {
-        background: white;
-        padding: 30px;
-        border-radius: 20px;
-        border: 2px solid #D4AF37; /* தங்க நிற பார்டர் */
-        box-shadow: 0 8px 32px 0 rgba(184, 134, 11, 0.1);
-        margin: 10px;
+        background: white; padding: 25px; border-radius: 20px;
+        border-top: 5px solid #D4AF37;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px;
     }
-
-    .info-label { color: #5D4037; font-size: 1.1em; font-weight: bold; }
-    .info-value { color: #1B5E20; font-size: 1.3em; font-weight: 800; }
-    .highlight-box { 
-        background-color: #FFF9C4; 
-        padding: 10px; 
-        border-radius: 10px; 
-        border-left: 5px solid #FBC02D; 
-        margin-top: 10px;
-    }
-    .good-time { color: #D84315; font-weight: bold; font-size: 1.2em; }
+    .info-label { color: #5D4037; font-weight: bold; }
+    .info-value { color: #1B5E20; font-size: 1.4em; font-weight: 800; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- தலைப்பு ---
-st.markdown("<h1 class='main-title'>🌟 அஸ்ட்ரோ கைடு - முக்கிய பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
+# --- பஞ்சாங்கக் கணிதம் ---
+def get_panchang(date_obj):
+    # திருக்கணித முறைப்படி 5:30 AM IST
+    jd = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
+    swe.set_sid_mode(swe.SIDM_LAHIRI)
+    
+    m_pos = swe.calc_ut(jd, swe.MOON, swe.FLG_SIDEREAL)[0][0]
+    s_pos = swe.calc_ut(jd, swe.SUN, swe.FLG_SIDEREAL)[0][0]
+    
+    naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
+    tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்தசி", "பௌர்ணமி", "பிரதமை (தேய்பிறை)", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்தசி", "அமாவாசை"]
+    
+    nak_idx = int(m_pos / (360/27))
+    tithi_idx = int(((m_pos - s_pos) % 360) / 12)
+    
+    return naks[nak_idx], tithis[tithi_idx]
 
-# --- இன்றைய தகவல்கள் (நீங்கள் கேட்ட விவரங்கள்) ---
-col1, col2 = st.columns([1, 1])
+# --- பிரதான பக்கம் ---
+st.markdown("<h1 class='header-style'>📅 அஸ்ட்ரோ காலண்டர் பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
+
+# காலண்டர் தேர்வு (Sidebar அல்லது Main-ல் வைக்கலாம்)
+st.sidebar.markdown("### 🗓️ தேதியைத் தேர்ந்தெடுக்கவும்")
+selected_date = st.sidebar.date_input("", value=datetime(2025, 12, 18))
+
+# கணக்கீடு
+nak, tithi = get_panchang(selected_date)
+
+# விபரங்களைக் காட்டுதல்
+st.info(f"தேர்வு செய்யப்பட்ட தேதி: {selected_date.strftime('%d-%m-%Y')}")
+
+col1, col2 = st.columns(2)
 
 with col1:
     st.markdown(f"""
     <div class="glass-card">
-        <h3 style="color: #B8860B;">📅 இன்றைய நாள் விபரம்</h3>
-        <p class="info-label">தேதி:</p>
-        <p class="info-value">டிசம்பர் 18, 2025</p>
-        <p class="info-label">தமிழ் மாதம்:</p>
-        <p class="info-value">விசுவாவசு வருடம், மார்கழி 3</p>
-        <p class="info-label">கிழமை:</p>
-        <p class="info-value">வியாழக்கிழமை</p>
-        <div class="highlight-box">
-            <p style="margin:0; color:#4E342E;">✨ <b>யோகம்:</b> சித்த யோகம் (இன்று முழுவதும்)</p>
-        </div>
+        <p class="info-label">🌙 இன்றைய திதி:</p>
+        <p class="info-value">{tithi}</p>
+        <hr>
+        <p class="info-label">⭐ இன்றைய நட்சத்திரம்:</p>
+        <p class="info-value">{nak}</p>
     </div>
     """, unsafe_allow_html=True)
 
 with col2:
     st.markdown(f"""
     <div class="glass-card">
-        <h3 style="color: #B8860B;">🌙 திதி & நட்சத்திரம்</h3>
-        <p class="info-label">இன்றைய திதி:</p>
-        <p class="info-value">சதுர்த்தசி</p>
-        <p style="color:#757575; font-size:0.9em;">(திரியோதசி அதிகாலை 03:51 வரை இருந்தது)</p>
+        <p class="info-label">⌛ நல்ல நேரம்:</p>
+        <p class="info-value" style="color:#D84315;">காலை 10:45 - 11:45</p>
         <hr>
-        <p class="info-label">இன்றைய நட்சத்திரம்:</p>
-        <p class="info-value">கேட்டை</p>
-        <p style="color:#757575; font-size:0.9em;">(அனுஷம் இரவு 09:34 வரை இருந்தது)</p>
+        <p class="info-label">✨ யோகம்:</p>
+        <p class="info-value">சித்த யோகம்</p>
     </div>
     """, unsafe_allow_html=True)
-
-# --- நல்ல நேரம் பகுதி ---
-st.markdown(f"""
-    <div class="glass-card" style="text-align: center; border-color: #4CAF50;">
-        <h3 style="color: #2E7D32;">⌛ நல்ல நேரம் (Subha Horai)</h3>
-        <p class="good-time">காலை 10:45 முதல் 11:45 வரை</p>
-        <p style="color: #666;">இன்று விசேஷமான காரியங்களைச் செய்ய இந்த நேரத்தைப் பயன்படுத்தலாம்.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- அடிக்குறிப்பு ---
-st.markdown("<p style='text-align:center; color:#9E9E9E; font-size:0.8em;'>கணித முறை: திருக்கணிதம் | இடம்: சென்னை (உள்ளூர் நேரப்படி)</p>", unsafe_allow_html=True)
