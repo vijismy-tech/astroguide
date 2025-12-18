@@ -1,10 +1,12 @@
 import streamlit as st
 import swisseph as swe
-from datetime import datetime, timedelta
-import pytzfrom astral import LocationInfo
+from datetime import datetime, timedelta, date
+import pytz
+
+from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
-from datetime import date
+
 
 
 # ஆப் அமைப்புகள்
