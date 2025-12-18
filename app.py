@@ -7,8 +7,8 @@ from astral.sun import sun
 from timezonefinder import TimezoneFinder
 import urllib.parse
 
-# ---------- App Settings ----------
-st.set_page_config(page_title="AstroGuide Mobile", layout="wide")
+# ---------- ஆப் அமைப்புகள் ----------
+st.set_page_config(page_title="AstroGuide Tamil", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
 ADMIN_WHATSAPP = "919876543210" 
@@ -16,13 +16,13 @@ ADMIN_WHATSAPP = "919876543210"
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# ---------- CSS (Compact & Mobile Friendly) ----------
+# ---------- CSS வடிவமைப்பு (மொபைலுக்கு ஏற்றது) ----------
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF; }
     h1, h2, h3, p, span, div, label, td, th { 
         color: #1a1a1a !important; 
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Arial', sans-serif;
     }
     .header-style { 
         color: #8B0000 !important; 
@@ -30,7 +30,7 @@ st.markdown("""
         font-weight: bold; 
         margin-top: -30px;
         margin-bottom: 5px; 
-        font-size: 1.15em; 
+        font-size: 1.2em; 
     }
     .main-box { 
         max-width: 450px; margin: auto; padding: 10px; 
@@ -43,54 +43,54 @@ st.markdown("""
         border-radius: 5px; overflow: hidden; border: 1px solid #8B0000;
         font-size: 0.8em; 
     }
-    .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; font-size: 0.85em; }
-    .panchang-table td { padding: 5px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
+    .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; }
+    .panchang-table td { padding: 6px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
     .special-note { 
-        background-color: #FFF9C4; padding: 6px; border-radius: 5px; 
-        border-left: 4px solid #FBC02D; margin-bottom: 8px; 
-        color: #8B0000 !important; font-weight: bold; text-align: center; font-size: 0.8em;
+        background-color: #FFF9C4; padding: 8px; border-radius: 5px; 
+        border-left: 5px solid #FBC02D; margin-bottom: 8px; 
+        color: #8B0000 !important; font-weight: bold; text-align: center; font-size: 0.85em;
     }
-    .next-info { color: #8B0000 !important; font-size: 0.7em; font-style: italic; display: block; }
+    .next-info { color: #8B0000 !important; font-size: 0.75em; font-style: italic; display: block; }
     .muhurtham-box { color: #2E7D32 !important; font-weight: bold; }
     .asubha-row { background-color: #FFF5F5; }
     </style>
     """, unsafe_allow_html=True)
 
-# ---------------- LOGIN / SIGNUP ----------------
+# ---------------- லாகின் / பதிவு ----------------
 if not st.session_state.logged_in:
-    st.markdown("<h1 class='header-style'>🔱 AstroGuide Login</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='header-style'>🔱 AstroGuide உள்நுழைவு</h1>", unsafe_allow_html=True)
     st.markdown('<div class="main-box">', unsafe_allow_html=True)
-    mode = st.radio("Selection", ["Login", "Sign Up"], horizontal=True)
-    if mode == "Login":
-        u_name = st.text_input("Name")
-        u_pass = st.text_input("Password", type="password")
-        if st.button("Enter"):
+    mode = st.radio("தேர்வு செய்க", ["உள்நுழைவு", "பதிவு செய்க"], horizontal=True)
+    if mode == "உள்நுழைவு":
+        u_name = st.text_input("பெயர்")
+        u_pass = st.text_input("கடவுச்சொல்", type="password")
+        if st.button("உள்ளே செல்க"):
             if u_name != "" and u_pass != "": st.session_state.logged_in = True; st.rerun()
-            else: st.error("Fill details")
+            else: st.error("விவரங்களை நிரப்பவும்")
     else:
-        s_name = st.text_input("Full Name")
-        s_phone = st.text_input("WhatsApp No")
-        if st.button("Request Access"):
-            msg = urllib.parse.quote(f"AstroGuide Access: {s_name} - {s_phone}")
-            st.markdown(f'<a href="https://wa.me/{ADMIN_WHATSAPP}?text={msg}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:8px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Send WhatsApp</button></a>', unsafe_allow_html=True)
+        s_name = st.text_input("முழு பெயர்")
+        s_phone = st.text_input("வாட்ஸ்அப் எண்")
+        if st.button("அனுமதி கோருக"):
+            msg = urllib.parse.quote(f"AstroGuide அனுமதி கோரிக்கை: {s_name} - {s_phone}")
+            st.markdown(f'<a href="https://wa.me/{ADMIN_WHATSAPP}?text={msg}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:8px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">வாட்ஸ்அப்பில் அனுப்பவும்</button></a>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# ---------------- Districts ----------------
-districts = {"Chennai": [13.08, 80.27], "Madurai": [9.93, 78.12], "Trichy": [10.79, 78.70], "Coimbatore": [11.02, 76.96], "Nellai": [8.71, 77.76], "Salem": [11.66, 78.15]}
+# ---------------- மாவட்டங்கள் ----------------
+districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15], "தஞ்சாவூர்": [10.79, 79.14]}
 
 st.markdown("<h1 class='header-style'>🔱 AstroGuide திருக்கணிதப் பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
 
 st.markdown('<div class="main-box">', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
-with c1: s_dist = st.selectbox("Oor:", list(districts.keys()))
-with c2: s_date = st.date_input("Date:", datetime.now(IST))
-if st.button("Logout 🚪"): st.session_state.logged_in = False; st.rerun()
+with c1: s_dist = st.selectbox("ஊர்:", list(districts.keys()))
+with c2: s_date = st.date_input("தேதி:", datetime.now(IST))
+if st.button("வெளியேறு (Logout) 🚪"): st.session_state.logged_in = False; st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
 
 lat, lon = districts[s_dist]
 
-def get_full_panchang(date_obj, lat, lon):
+def get_full_panchang_tamil(date_obj, lat, lon):
     tf = TimezoneFinder()
     tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
     city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
@@ -114,18 +114,18 @@ def get_full_panchang(date_obj, lat, lon):
         return (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=low)).strftime("%I:%M %p")
 
     m_d, s_d, t_n, n_n = get_raw(jd_ut)
-    tithis = ["Prathamai", "Dwitiyai", "Tritiyai", "Chaturthi", "Panchami", "Sashti", "Saptami", "Ashtami", "Navami", "Dasami", "Ekadasi", "Dwadasi", "Trayodasi", "Chaturdasi", "Pournami", "Prathamai", "Dwitiyai", "Tritiyai", "Chaturthi", "Panchami", "Sashti", "Saptami", "Ashtami", "Navami", "Dasami", "Ekadasi", "Dwadasi", "Trayodasi", "Chaturdasi", "Amavasai"]
-    naks = ["Aswini", "Bharani", "Krithigai", "Rohini", "Mrigashirsham", "Thiruvathirai", "Punarpusam", "Poosam", "Ayilyam", "Magam", "Pooram", "Utthiram", "Hastam", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai", "Moolam", "Pooradam", "Utthiradam", "Thiruvonam", "Avittam", "Sadhayam", "Purattathi", "Utthirattathi", "Revathi"]
+    tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
+    naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
     
     d_idx = date_obj.weekday()
-    wara = ["Thingal", "Chevvai", "Budhan", "Vyalan", "Velli", "Sani", "Gnayiru"][d_idx]
+    wara = ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][d_idx]
     
-    special = "Normal Day"
-    if t_n in [14, 29]: special = "🌟 Vishesham: Amavasai/Pournami"
-    elif t_n in [12, 27]: special = "🔱 Vishesham: Pradosham"
+    special = "சாதாரண நாள்"
+    if t_n in [14, 29]: special = "🌟 விசேஷம்: அமாவாசை / பௌர்ணமி"
+    elif t_n in [12, 27]: special = "🔱 விசேஷம்: பிரதோஷம்"
 
     return {
-        "tamil": f"{['Chithirai', 'Vaikasi', 'Aani', 'Aadi', 'Aavani', 'Purattasi', 'Aippasi', 'Karthigai', 'Margazhi', 'Thai', 'Maasi', 'Panguni'][int(s_d/30)%12]} {int(s_d%30)+1}",
+        "tamil": f"{['சித்திரை', 'வைகாசி', 'ஆனி', 'ஆடி', 'ஆவணி', 'புரட்டாசி', 'ஐப்பசி', 'கார்த்திகை', 'மார்கழி', 'தை', 'மாசி', 'பங்குனி'][int(s_d/30)%12]} {int(s_d%30)+1}",
         "rise": s["sunrise"].strftime("%I:%M %p"), "set": s["sunset"].strftime("%I:%M %p"),
         "abhijit": f"{(mid - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid + timedelta(minutes=24)).strftime('%I:%M %p')}",
         "tithi": tithis[t_n % 30], "t_end": find_end(jd_ut, t_n, "tithi"), "next_t": tithis[(t_n + 1) % 30],
@@ -134,26 +134,26 @@ def get_full_panchang(date_obj, lat, lon):
         "yema": ["10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][d_idx],
         "kuli": ["13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30"][d_idx],
         "gowri": ["01:30-02:30 PM", "10:30-11:30 AM", "09:30-10:30 AM", "01:30-02:30 PM", "12:30-01:30 PM", "09:30-10:30 AM", "10:30-11:30 AM"][d_idx],
-        "shoolam": ["East", "North", "North", "South", "West", "East", "West"][d_idx],
+        "shoolam": ["கிழக்கு", "வடக்கு", "வடக்கு", "தெற்கு", "மேற்கு", "கிழக்கு", "மேற்கு"][d_idx],
         "wara": wara, "deg": round(m_d, 2), "special": special
     }
 
-res = get_full_panchang(s_date, lat, lon)
+res = get_full_panchang_tamil(s_date, lat, lon)
 
 st.markdown(f"<div class='special-note'>{res['special']}</div>", unsafe_allow_html=True)
 
 st.markdown(f"""
 <table class="panchang-table">
     <tr><th colspan="2">AstroGuide - {s_dist} ({res['wara']})</th></tr>
-    <tr><td>📅 <b>Tamil Date</b></td><td>{res['tamil']}</td></tr>
-    <tr><td>🌅 <b>Sunrise / Set</b></td><td>{res['rise']} / {res['set']}</td></tr>
-    <tr><td>✨ <b>Abhijit</b></td><td><span class='muhurtham-box'>{res['abhijit']}</span></td></tr>
-    <tr><td>🌙 <b>Tithi</b></td><td><b>{res['tithi']}</b> ({res['t_end']})<br><span class='next-info'>Next: {res['next_t']}</span></td></tr>
-    <tr><td>⭐ <b>Nakshatram</b></td><td><b>{res['nak']}</b> ({res['n_end']})<br><span class='next-info'>Next: {res['next_n']}</span></td></tr>
-    <tr><td>🌟 <b>Gowri Good Time</b></td><td>{res['gowri']}</td></tr>
-    <tr class="asubha-row"><td>🚫 <b>Rahu / Yema</b></td><td>{res['rahu']} / {res['yema']}</td></tr>
-    <tr class="asubha-row"><td>🚫 <b>Kuligai</b></td><td>{res['kuli']}</td></tr>
-    <tr><td>📍 <b>Shoolam</b></td><td>{res['shoolam']} (Remedy: Milk/Curd)</td></tr>
-    <tr><td>📊 <b>Moon Deg</b></td><td>{res['deg']}°</td></tr>
+    <tr><td>📅 <b>தமிழ் தேதி</b></td><td>{res['tamil']}</td></tr>
+    <tr><td>🌅 <b>உதயம் / அஸ்தமனம்</b></td><td>{res['rise']} / {res['set']}</td></tr>
+    <tr><td>✨ <b>அபிஜித் முகூர்த்தம்</b></td><td><span class='muhurtham-box'>{res['abhijit']}</span></td></tr>
+    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> ({res['t_end']})<br><span class='next-info'>அடுத்து: {res['next_t']}</span></td></tr>
+    <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{res['nak']}</b> ({res['n_end']})<br><span class='next-info'>அடுத்து: {res['next_n']}</span></td></tr>
+    <tr><td>🌟 <b>கௌரி நல்ல நேரம்</b></td><td>{res['gowri']}</td></tr>
+    <tr class="asubha-row"><td>🚫 <b>ராகு / எமகண்டம்</b></td><td>{res['rahu']} / {res['yema']}</td></tr>
+    <tr class="asubha-row"><td>🚫 <b>குளிகை</b></td><td>{res['kuli']}</td></tr>
+    <tr><td>📍 <b>சூலம்</b></td><td>{res['shoolam']} (பரிகாரம்: பால்/தயிர்)</td></tr>
+    <tr><td>📊 <b>சந்திர பாகை</b></td><td>{res['deg']}°</td></tr>
 </table>
 """, unsafe_allow_html=True)
