@@ -1,4 +1,8 @@
 streamlit
 pyswisseph
+pytz
+astral==2.2
+timezonefinder
 geopy
-pip install astral timezonefinder
+numpy
+pandas
