@@ -1,3 +1,4 @@
 streamlit
 pyswisseph
 geopy
+pip install astral timezonefinder
