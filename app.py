@@ -1,5 +1,3 @@
-st.write("DEBUG:", st.session_state.logged_in)
-
 import streamlit as st
 import swisseph as swe
 from datetime import datetime, timedelta, date
