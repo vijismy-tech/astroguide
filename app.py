@@ -3,81 +3,95 @@ import swisseph as swe
 from datetime import datetime, timedelta
 from geopy.geocoders import Nominatim
 
+# ஆப் கட்டமைப்பு
 st.set_page_config(page_title="Astro Guide Pro", layout="wide")
 
-def get_super_detailed_panchang(city_name, date_obj):
+# துல்லியமான நேரக் கணக்கீட்டு இயந்திரம்
+def get_precise_panchang(city_name, date_obj):
     try:
-        geolocator = Nominatim(user_agent="astro_pro_v3")
+        geolocator = Nominatim(user_agent="astro_pro_v4")
         loc = geolocator.geocode(city_name)
         lat, lon = (loc.latitude, loc.longitude) if loc else (13.0827, 80.2707)
     except:
         lat, lon = 13.0827, 80.2707
 
-    jd = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
+    # Julian Day (காலை 5.30 மணி நேரப்படி)
+    jd_start = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
 
-    # Moon calculation
-    moon_pos = swe.calc_ut(jd, swe.MOON, swe.FLG_SIDEREAL)[0][0]
+    def get_moon_sun(jd):
+        m = swe.calc_ut(jd, swe.MOON, swe.FLG_SIDEREAL)[0][0]
+        s = swe.calc_ut(jd, swe.SUN, swe.FLG_SIDEREAL)[0][0]
+        return m, s
+
+    m_pos, s_pos = get_moon_sun(jd_start)
     
+    # பெயர்கள்
     naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
-    raasis = ["மேஷம்", "ரிஷபம்", "மிதுனம்", "கடகம்", "சிம்மம்", "கன்னி", "துலாம்", "விருச்சிகம்", "தனுசு", "மகரம்", "கும்பம்", "மீனம்"]
-    
-    # Current Status
-    curr_nak_idx = int(moon_pos / (360/27))
-    curr_nak = naks[curr_nak_idx]
-    curr_raasi_idx = int(moon_pos / 30)
-    curr_raasi = raasis[curr_raasi_idx]
-    
-    # Timing - Current Nakshatra ends
-    deg_left = ((curr_nak_idx + 1) * (360/27)) - moon_pos
-    hours_to_end = deg_left / 0.55 
-    end_time_dt = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5 + hours_to_end)
-    end_time_str = end_time_dt.strftime("%I:%M %p")
+    tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்தசி", "பௌர்ணமி", "பிரதமை (கிருஷ்ண பட்சம்)", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்தசி", "அமாவாசை"]
 
-    # Next Nakshatra
-    next_nak = naks[(curr_nak_idx + 1) % 27]
+    # தற்போதைய நட்சத்திரம் & திதி
+    curr_nak_idx = int(m_pos / (360/27))
+    curr_tithi_idx = int(((m_pos - s_pos) % 360) / 12)
 
-    # --- Chandrashtama Logic ---
-    # Chandra in Vrichigam (7) means Chandrashtama for Mithunam (2)
-    aff_raasi_idx = (curr_raasi_idx - 5) % 12
-    aff_raasi = raasis[aff_raasi_idx]
-    
-    # Chandrashtama Nakshatram:
-    # Chandra current star is Chandrashtama for the star that is 17 places behind.
-    aff_nak_idx = (curr_nak_idx - 16) % 27
-    aff_nak = naks[aff_nak_idx]
+    # முடிவு நேரக் கணக்கீடு (Iterative Accuracy)
+    def find_end_time(jd, type="nak"):
+        step = 0.02 # 30 நிமிடங்கள் தோராயமாக
+        target_jd = jd
+        for _ in range(100): # துல்லியத்தை அதிகப்படுத்த
+            m, s = get_moon_sun(target_jd)
+            if type == "nak":
+                idx = int(m / (360/27))
+                if idx != curr_nak_idx: break
+            else:
+                idx = int(((m - s) % 360) / 12)
+                if idx != curr_tithi_idx: break
+            target_jd += step
+        
+        # நேரத்தை மாற்றவும்
+        return datetime.combine(date_obj, datetime.min.time()) + timedelta(days=(target_jd - jd_start) + 0.229)
 
-    return curr_nak, end_time_str, next_nak, aff_raasi, aff_nak
+    nak_end_dt = find_end_time(jd_start, "nak")
+    tithi_end_dt = find_end_time(jd_start, "tithi")
 
-# --- UI Interface ---
-st.title("🌟 அஸ்ட்ரோ கைடு - துல்லிய விபரங்கள்")
+    return {
+        "nak": naks[curr_nak_idx],
+        "next_nak": naks[(curr_nak_idx + 1) % 27],
+        "nak_end": nak_end_dt.strftime("%I:%M %p"),
+        "tithi": tithis[curr_tithi_idx],
+        "next_tithi": tithis[(curr_tithi_idx + 1) % 30],
+        "tithi_end": tithi_end_dt.strftime("%I:%M %p")
+    }
+
+# --- UI ---
+st.title("🌟 அஸ்ட்ரோ கைடு - துல்லிய பஞ்சாங்கம்")
 city = st.sidebar.text_input("ஊர்:", "Chennai")
 today = st.sidebar.date_input("தேதி:", datetime.now())
 
-c_nak, c_end, n_nak, a_raasi, a_nak = get_super_detailed_panchang(city, today)
+res = get_precise_panchang(city, today)
 
-# Display Cards
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown(f"""
-    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 15px; border-top: 5px solid green;">
-        <h3 style="color: green;">⭐ நட்சத்திர விபரம்</h3>
-        <p>இன்றைய நட்சத்திரம்: <b>{c_nak}</b></p>
-        <p style="color: blue;">🕒 <b>முடியும் நேரம்: {c_end}</b> வரை</p>
+    <div style="background-color:#E8F5E9; padding:20px; border-radius:15px; border-left:8px solid #2E7D32;">
+        <h3 style="color:#2E7D32;">🌙 திதி விபரம்</h3>
+        <p>இன்றைய திதி: <b>{res['tithi']}</b></p>
+        <p style="color:#D84315;">⏳ <b>முடியும் நேரம்: இன்று {res['tithi_end']} வரை</b></p>
         <hr>
-        <p>அடுத்த நட்சத்திரம்: <b>{n_nak}</b></p>
-        <p>🕒 <b>தொடங்கும் நேரம்: {c_end}</b></p>
+        <p>அடுத்த திதி: {res['next_tithi']}</p>
+        <p>தொடங்கும் நேரம்: {res['tithi_end']}</p>
     </div>
     """, unsafe_allow_html=True)
 
 with col2:
     st.markdown(f"""
-    <div style="background-color: #fff5f5; padding: 20px; border-radius: 15px; border-top: 5px solid red;">
-        <h3 style="color: red;">⚠️ சந்திராஷ்டம விபரம்</h3>
-        <p>பாதிக்கப்படும் ராசி: <b>{a_raasi}</b></p>
-        <p>பாதிக்கப்படும் நட்சத்திரம்: <b>{a_nak}</b></p>
-        <p style="color: darkred;">🕒 <b>எச்சரிக்கை நேரம்: {c_end} வரை</b></p>
-        <p style="font-size: 0.8em; color: gray;">(குறிப்பு: இன்று சந்திரன் {c_nak} நட்சத்திரத்தில் சஞ்சரிப்பதால், {a_nak} நட்சத்திரத்தில் பிறந்தவர்களுக்கு சந்திராஷ்டமம் நடக்கிறது.)</p>
+    <div style="background-color:#FFF3E0; padding:20px; border-radius:15px; border-left:8px solid #EF6C00;">
+        <h3 style="color:#EF6C00;">⭐ நட்சத்திர விபரம்</h3>
+        <p>இன்றைய நட்சத்திரம்: <b>{res['nak']}</b></p>
+        <p style="color:#D84315;">⏳ <b>முடியும் நேரம்: இன்று {res['nak_end']} வரை</b></p>
+        <hr>
+        <p>அடுத்த நட்சத்திரம்: {res['next_nak']}</p>
+        <p>தொடங்கும் நேரம்: {res['nak_end']}</p>
     </div>
     """, unsafe_allow_html=True)
