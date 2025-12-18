@@ -11,6 +11,10 @@ from timezonefinder import TimezoneFinder
 
 # ஆப் அமைப்புகள்
 st.set_page_config(page_title="Ultra Precise Tamil Panchangam", layout="wide")
+# ---------- SESSION STATE ----------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 # ---------------- LOGIN / SIGNUP ----------------
 ADMIN_WHATSAPP = "919876543210"  # 🔁 change to your WhatsApp number
 
@@ -22,6 +26,8 @@ user_whatsapp = st.sidebar.text_input("📱 WhatsApp Number", placeholder="e.g. 
 action = st.sidebar.radio("Choose Action", ["Login", "Sign Up"])
 
 if st.sidebar.button("Continue via WhatsApp"):
+    st.session_state.logged_in = True
+
     if user_whatsapp.strip() == "":
         st.sidebar.error("Please enter WhatsApp number")
     else:
