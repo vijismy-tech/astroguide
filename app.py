@@ -19,7 +19,6 @@ st.markdown("""
     .panchang-table th { background-color: #8B0000; color: white; padding: 15px; text-align: left; }
     .panchang-table td { padding: 12px 15px; border: 1px solid #eee; color: #333; font-weight: 600; }
     .sub-text { color: #666; font-size: 0.85em; font-weight: normal; }
-    .special-note { background-color: #FFF9C4; padding: 15px; border-radius: 10px; border-left: 5px solid #FBC02D; margin-bottom: 20px; color: #5D4037; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -34,20 +33,13 @@ def get_precise_panchang(date_obj, lat_val, lon_val):
     y, m, d = int(date_obj.year), int(date_obj.month), int(date_obj.day)
     
     # 0.0 UT = 5:30 AM IST
-    jd_ut = swe.julday(y, m, d, 0.0) 
+    jd_ut = swe.julday(y, m, d, 0.0)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     swe.set_topo(lon, lat, 0.0)
 
-    # கிரகக் குறியீடுகள் (Strict Integer)
-    SUN = 0
-    MOON = 1
-    FLAG_SID = int(swe.FLG_SIDEREAL)
-    RISE = int(swe.CALC_RISE)
-    SET = int(swe.CALC_SET)
-
     def get_raw_astronomy(jd):
-        m_res, _ = swe.calc_ut(jd, MOON, FLAG_SID)
-        s_res, _ = swe.calc_ut(jd, SUN, FLAG_SID)
+        m_res, _ = swe.calc_ut(jd, 1, int(swe.FLG_SIDEREAL))
+        s_res, _ = swe.calc_ut(jd, 0, int(swe.FLG_SIDEREAL))
         m_deg, s_deg = m_res[0], s_res[0]
         diff = (m_deg - s_deg) % 360
         return m_deg, s_deg, int(diff / 12), int(m_deg / (360/27)), int(((m_deg + s_deg) % 360) / (360/27)), int(diff / 6) % 11
@@ -63,34 +55,37 @@ def get_precise_panchang(date_obj, lat_val, lon_val):
             else: high = mid
         return datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=low)
 
+    # சூரிய உதயம் கணக்கிடும் திருத்தப்பட்ட முறை (Robust Method)
+    # இது சூரியன் அடிவானத்திற்கு மேலே வரும் துல்லியமான நேரத்தைக் கண்டறியும்
+    res = swe.rise_trans(jd_ut, 0, lon, lat, 0, int(swe.CALC_RISE | swe.BIT_DISC_CENTER))
+    sunrise_jd = res[1]
+    
+    # அஸ்தமனம்
+    res_set = swe.rise_trans(jd_ut, 0, lon, lat, 0, int(swe.CALC_SET | swe.BIT_DISC_CENTER))
+    sunset_jd = res_set[1]
+
+    # JD-யை IST நேரமாக மாற்றுதல்
+    sunrise_dt = datetime(2000, 1, 1) + timedelta(days=sunrise_jd - 2451544.5 + 0.229167) # UT to IST adjustment
+    # துல்லியமான மாற்று முறை
+    sunrise_ist = (datetime.combine(date_obj, datetime.min.time()) + timedelta(days=sunrise_jd - jd_ut) + timedelta(hours=5, minutes=30)).strftime("%I:%M %p")
+    sunset_ist = (datetime.combine(date_obj, datetime.min.time()) + timedelta(days=sunset_jd - jd_ut) + timedelta(hours=5, minutes=30)).strftime("%I:%M %p")
+
     m_start, s_start, t_now, n_now, y_now, k_now = get_raw_astronomy(jd_ut)
     t_end_dt = find_boundary(jd_ut, t_now, "tithi")
-    n_end_dt = find_boundary(jd_ut, n_now, "nak")
-
-    # உதய அஸ்தமனக் கணக்கீடு (Integer Fix)
-    rise_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, RISE)
-    set_res = swe.rise_trans(jd_ut, SUN, lon, lat, 0, SET)
-    
-    sunrise = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=float(rise_res[1])-jd_ut)).strftime("%I:%M %p")
-    sunset = (datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=float(set_res[1])-jd_ut)).strftime("%I:%M %p")
 
     tamil_months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
     t_month = tamil_months[int(s_start / 30) % 12]
     t_date = int(s_start % 30) + 1
 
     return {
-        "m_deg": round(m_start, 2), "sunrise": sunrise, "sunset": sunset,
-        "tamil": f"{t_month} {t_date}", "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][int(date_obj.weekday())],
+        "m_deg": round(m_start, 2), "sunrise": sunrise_ist, "sunset": sunset_ist,
+        "tamil": f"{t_month} {t_date}", "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()],
         "tithi": ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"][t_now % 30],
-        "t_end": t_end_dt.strftime("%I:%M %p"),
-        "nak": ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"][n_now % 27],
-        "n_end": n_end_dt.strftime("%I:%M %p"),
-        "yog": ["விஷ்கம்பம்", "ப்ரீதி", "ஆயுஷ்மான்", "சௌபாக்கியம்", "சோபனம்", "அதிகண்டம்", "சுகர்மம்", "திருதி", "சூலம்", "கண்டம்", "விருத்தி", "துருவம்", "வியாகாதம்", "ஹர்ஷணம்", "வஜ்ரம்", "சித்தி", "வியதீபாதம்", "வரியான்", "பரிகம்", "சிவம்", "சித்தம்", "சாத்தியம்", "சுபம்", "சுப்பிரம்", "பிராமியம்", "ஐந்தரம்", "வைதிருதி"][y_now % 27],
-        "kar": ["பவம்", "பாலவம்", "கௌலவம்", "சைதிலை", "கரசை", "வணிசை", "பத்திரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்னம்"][k_now % 11]
+        "t_end": t_end_dt.strftime("%I:%M %p")
     }
 
 # --- UI ---
-st.markdown("<h1 class='header-style'>🔱 தமிழ்நாடு முழுமையான திருக்கணிதப் பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='header-style'>🔱 திருக்கணிதப் பஞ்சாங்கம் - சூரிய உதயம்</h1>", unsafe_allow_html=True)
 
 with st.sidebar:
     selected_dist = st.selectbox("மாவட்டத்தைத் தேர்ந்தெடுக்கவும்:", list(districts.keys()))
@@ -100,17 +95,15 @@ try:
     lat, lon = districts[selected_dist]
     p = get_precise_panchang(selected_date, lat, lon)
 
-    st.markdown(f"<div class='special-note'>📅 தமிழ் தேதி: {p['tamil']} | கிழமை: {p['wara']}</div>", unsafe_allow_html=True)
-
     st.markdown(f"""
     <table class="panchang-table">
         <tr><th>அங்கம்</th><th>விவரம் ({selected_dist})</th></tr>
-        <tr><td>🌅 <b>சூரிய உதயம் / அஸ்தமனம்</b></td><td>உதயம்: <b>{p['sunrise']}</b> | அஸ்தமனம்: <b>{p['sunset']}</b></td></tr>
-        <tr><td>🌙 <b>திதி சஞ்சாரம்</b></td><td><b>{p['tithi']}</b> (முடிவு: {p['t_end']})</td></tr>
-        <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{p['nak']}</b> (முடிவு: {p['n_end']})</td></tr>
-        <tr><td>♈ <b>யோகம் / கரணம்</b></td><td>யோகம்: {p['yog']} | கரணம்: {p['kar']}</td></tr>
-        <tr><td>📊 <b>நிலவின் பாகை</b></td><td>{p['m_deg']}° (திருக்கணிதம்)</td></tr>
+        <tr><td>🌅 <b>சூரிய உதயம்</b></td><td><b>{p['sunrise']}</b></td></tr>
+        <tr><td>🌇 <b>சூரிய அஸ்தமனம்</b></td><td><b>{p['sunset']}</b></td></tr>
+        <tr><td>📅 <b>தமிழ் தேதி</b></td><td>{p['tamil']}</td></tr>
+        <tr><td>🌙 <b>திதி</b></td><td><b>{p['tithi']}</b> (முடிவு: {p['t_end']})</td></tr>
+        <tr><td>📊 <b>நிலவின் பாகை</b></td><td>{p['m_deg']}°</td></tr>
     </table>
     """, unsafe_allow_html=True)
 except Exception as e:
-    st.error(f"பிழை: {str(e)}")
+    st.error(f"கணக்கீட்டில் பிழை: {e}")
