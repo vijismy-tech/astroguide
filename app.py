@@ -1,277 +1,289 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, MapPin, Loader2, Sparkles, Sun, Moon, Info, ArrowRightCircle } from 'lucide-react';
+import { GoogleGenAI, Type } from '@google/genai';
 import { DISTRICTS } from './constants';
-import { getDayName, getStaticTimings } from './utils/calculations';
-import { fetchPanchangData } from './services/geminiService';
-import { PanchangData, StaticTimings } from './types';
+import { District, PanchangamData } from './types';
 
 const App: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedDist, setSelectedDist] = useState<string>("சென்னை");
-  const [panchang, setPanchang] = useState<PanchangData | null>(null);
-  const [staticTimes, setStaticTimes] = useState<StaticTimings>(getStaticTimings(new Date()));
-  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedDistrict, setSelectedDistrict] = useState<District>(DISTRICTS[2]); // Default Chennai
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [data, setData] = useState<PanchangamData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const fetchPanchangam = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const dist = DISTRICTS[selectedDist];
-      const data = await fetchPanchangData(selectedDate, selectedDist, dist.lat, dist.lon);
-      setPanchang(data);
-      setStaticTimes(getStaticTimings(selectedDate));
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Generate a detailed Tamil Thirukanitha Panchangam for the location ${selectedDistrict.name} (Latitude: ${selectedDistrict.lat}, Longitude: ${selectedDistrict.lng}) on the date ${selectedDate}. 
+      All text fields must be in Tamil language.
+      Provide detailed astrological calculations for Tithi, Nakshatram, Yogam, Karanam, Rahukalam, Yamagandam, and planetary positions.
+      Also include a brief summary of the day's astrological significance in Tamil.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              panchangam: {
+                type: Type.OBJECT,
+                properties: {
+                  tamilYear: { type: Type.STRING },
+                  tamilMonth: { type: Type.STRING },
+                  tamilDay: { type: Type.STRING },
+                  ayanam: { type: Type.STRING },
+                  ruthu: { type: Type.STRING },
+                  tithi: { type: Type.STRING },
+                  nakshatram: { type: Type.STRING },
+                  yogam: { type: Type.STRING },
+                  karanam: { type: Type.STRING },
+                  rasi: { type: Type.STRING },
+                  rahukalam: { type: Type.STRING },
+                  yamagandam: { type: Type.STRING },
+                  kuligai: { type: Type.STRING },
+                  nallaNeram: { type: Type.STRING },
+                  gowriNallaNeram: { type: Type.STRING },
+                  chandrashtamam: { type: Type.STRING },
+                  summary: { type: Type.STRING },
+                  planetaryPositions: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        planet: { type: Type.STRING },
+                        rasi: { type: Type.STRING },
+                        degrees: { type: Type.STRING }
+                      },
+                      required: ['planet', 'rasi', 'degrees']
+                    }
+                  }
+                },
+                required: [
+                  'tamilYear', 'tamilMonth', 'tamilDay', 'ayanam', 'ruthu', 'tithi', 
+                  'nakshatram', 'yogam', 'karanam', 'rasi', 'rahukalam', 'yamagandam', 
+                  'kuligai', 'nallaNeram', 'gowriNallaNeram', 'chandrashtamam', 'summary', 'planetaryPositions'
+                ]
+              }
+            },
+            required: ['panchangam']
+          }
+        }
+      });
+
+      const result = JSON.parse(response.text);
+      setData(result.panchangam);
     } catch (err) {
       console.error(err);
-      setError("தகவல்களைப் பெறுவதில் சிக்கல் ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.");
+      setError('பஞ்சாங்கம் விவரங்களைப் பெறுவதில் பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, selectedDist]);
+  }, [selectedDistrict, selectedDate]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    fetchPanchangam();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#FDFCF0] text-gray-800 pb-12">
+    <div className="min-h-screen pb-12">
       {/* Header */}
-      <header className="bg-[#8B0000] text-white py-6 px-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="text-center md:text-left">
-            <h1 className="text-3xl font-bold tracking-tight mb-1">🔱 திருக்கணிதப் பஞ்சாங்கம்</h1>
-            <p className="text-red-100 text-sm font-medium">அதி துல்லியமான ஜாதக மற்றும் காலக் கணிப்பு</p>
+      <header className="bg-tamil-gold text-white py-8 px-4 shadow-lg mb-8">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-full">
+              <Sun className="w-8 h-8 text-yellow-200" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">தமிழ் திருக்கணித பஞ்சாங்கம்</h1>
+              <p className="text-yellow-100 mt-1 opacity-90">38 மாவட்டங்கள் மற்றும் புதுச்சேரிக்கான துல்லியமான கணிப்பு</p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 bg-white/10 p-2 rounded-lg">
-            <select 
-              value={selectedDist}
-              onChange={(e) => setSelectedDist(e.target.value)}
-              className="bg-white text-gray-800 px-3 py-1.5 rounded border-none font-semibold focus:ring-2 focus:ring-yellow-400 outline-none"
+          
+          <div className="flex flex-wrap gap-4 items-center bg-white/10 p-4 rounded-xl backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-yellow-200" />
+              <select 
+                value={selectedDistrict.name}
+                onChange={(e) => setSelectedDistrict(DISTRICTS.find(d => d.name === e.target.value) || DISTRICTS[0])}
+                className="bg-transparent border-b border-white/30 text-white focus:outline-none cursor-pointer p-1"
+              >
+                {DISTRICTS.map(d => (
+                  <option key={d.name} value={d.name} className="text-black">{d.tamilName}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-yellow-200" />
+              <input 
+                type="date" 
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent border-b border-white/30 text-white focus:outline-none cursor-pointer p-1"
+              />
+            </div>
+            <button 
+              onClick={fetchPanchangam}
+              disabled={loading}
+              className="bg-white text-tamil-gold px-6 py-2 rounded-lg font-bold hover:bg-yellow-50 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {Object.keys(DISTRICTS).map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <input 
-              type="date" 
-              value={selectedDate.toISOString().split('T')[0]}
-              onChange={(e) => setSelectedDate(new Date(e.target.value))}
-              className="bg-white text-gray-800 px-3 py-1.5 rounded border-none font-semibold focus:ring-2 focus:ring-yellow-400 outline-none"
-            />
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightCircle className="w-4 h-4" />}
+              கணித்திடு
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 mt-8">
+      <main className="max-w-5xl mx-auto px-4">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 flex items-center gap-3">
+            <Info className="w-5 h-5" />
+            <p>{error}</p>
+          </div>
+        )}
+
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-64 text-[#8B0000]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-current mb-4"></div>
-            <p className="font-bold">ஜோதிடக் கணக்கீடுகள் தயாராகிக் கொண்டிருக்கின்றன...</p>
+          <div className="flex flex-col items-center justify-center py-20 text-tamil-gold">
+            <Loader2 className="w-16 h-16 animate-spin mb-4" />
+            <p className="text-xl font-medium">பஞ்சாங்கம் கணிக்கப்படுகிறது...</p>
           </div>
-        ) : error ? (
-          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded shadow-sm">
-            <p className="text-red-700 font-bold">{error}</p>
-            <button 
-              onClick={loadData}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
-            >
-              மீண்டும் முயற்சிக்கவும்
-            </button>
-          </div>
-        ) : panchang && (
-          <div className="space-y-6">
-            {/* Special Note Card */}
-            <div className="bg-yellow-50 border-l-8 border-yellow-500 p-6 rounded-xl shadow-md transform hover:scale-[1.01] transition-transform">
-              <h2 className="text-xl font-bold text-yellow-900 mb-2 flex items-center gap-2">
-                ✨ இன்றைய சிறப்பு மற்றும் வழிபாடு
-              </h2>
-              <p className="text-yellow-800 leading-relaxed font-semibold">
-                {panchang.tamilMonth} {panchang.tamilDate} | {getDayName(selectedDate)} - {panchang.specialSignificance}
-              </p>
+        ) : data ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Main Daily Card */}
+            <div className="lg:col-span-2 space-y-6">
+              <section className="panchangam-card p-6 rounded-2xl shadow-sm">
+                <div className="flex justify-between items-start mb-6 border-b border-orange-100 pb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-orange-800">{data.tamilMonth} {data.tamilDay}</h2>
+                    <p className="text-orange-600 font-medium">{data.tamilYear} ஆண்டு | {data.ayanam} | {data.ruthu}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-500 text-sm">தேதி: {selectedDate}</p>
+                    <p className="text-gray-500 text-sm">இடம்: {selectedDistrict.tamilName}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <PanchangamItem icon={<Sun className="w-5 h-5 text-orange-500" />} label="திதி" value={data.tithi} />
+                    <PanchangamItem icon={<Moon className="w-5 h-5 text-indigo-500" />} label="நட்சத்திரம்" value={data.nakshatram} />
+                    <PanchangamItem icon={<Sparkles className="w-5 h-5 text-purple-500" />} label="யோகம்" value={data.yogam} />
+                    <PanchangamItem icon={<Info className="w-5 h-5 text-blue-500" />} label="கரணம்" value={data.karanam} />
+                  </div>
+                  <div className="space-y-4">
+                    <PanchangamItem icon={<MapPin className="w-5 h-5 text-red-500" />} label="ராசி" value={data.rasi} />
+                    <PanchangamItem icon={<Info className="w-5 h-5 text-amber-500" />} label="சந்திராஷ்டமம்" value={data.chandrashtamam} />
+                    <PanchangamItem icon={<Sun className="w-5 h-5 text-yellow-600" />} label="நல்ல நேரம்" value={data.nallaNeram} />
+                    <PanchangamItem icon={<Sun className="w-5 h-5 text-yellow-500" />} label="கௌரி நல்ல நேரம்" value={data.gowriNallaNeram} />
+                  </div>
+                </div>
+              </section>
+
+              {/* Summary Card */}
+              <section className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+                <h3 className="text-lg font-bold text-orange-900 mb-3 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" /> இன்றைய பலன்கள்
+                </h3>
+                <p className="text-orange-800 leading-relaxed">{data.summary}</p>
+              </section>
+
+              {/* Planetary Positions */}
+              <section className="panchangam-card p-6 rounded-2xl shadow-sm">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">கிரக நிலைகள் (திருக்கணிதம்)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {data.planetaryPositions.map((p, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-xl border border-gray-100 flex flex-col items-center justify-center text-center">
+                      <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">{p.planet}</span>
+                      <span className="text-tamil-gold font-bold">{p.rasi}</span>
+                      <span className="text-gray-400 text-[10px]">{p.degrees}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
 
-            {/* Panchang Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Primary Data */}
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                <div className="bg-[#8B0000] px-6 py-4 text-white flex justify-between items-center">
-                  <h3 className="font-bold text-lg">📅 பஞ்சாங்க விவரங்கள்</h3>
-                  <span className="text-sm bg-white/20 px-2 py-1 rounded">திருக்கணித முறை</span>
+            {/* Sidebar Cards */}
+            <div className="space-y-6">
+              <section className="bg-red-50 p-6 rounded-2xl border border-red-100">
+                <h3 className="text-lg font-bold text-red-900 mb-4 flex items-center gap-2">
+                   அசுப நேரங்கள்
+                </h3>
+                <div className="space-y-4">
+                  <TimingItem label="ராகு காலம்" value={data.rahukalam} color="text-red-700" />
+                  <TimingItem label="எமகண்டம்" value={data.yamagandam} color="text-red-700" />
+                  <TimingItem label="குளிகை" value={data.kuligai} color="text-blue-700" />
                 </div>
-                <div className="p-0">
-                  <table className="w-full text-left">
-                    <tbody className="divide-y divide-gray-100">
-                      <Row 
-                        label="தமிழ் தேதி" 
-                        value={`${panchang.tamilMonth} ${panchang.tamilDate}`} 
-                        sub={`${getDayName(selectedDate)}`}
-                        icon="🗓️"
-                      />
-                      <Row 
-                        label="திதி சஞ்சாரம்" 
-                        value={panchang.tithi} 
-                        sub={`முடிவு: ${panchang.tithiEndTime}`}
-                        badge={panchang.paksha}
-                        icon="🌙"
-                      />
-                      <Row 
-                        label="நட்சத்திரம்" 
-                        value={panchang.nakshatram} 
-                        sub={`முடிவு: ${panchang.nakEndTime}`}
-                        extra={`அடுத்து: ${panchang.nextNak}`}
-                        icon="⭐"
-                      />
-                      <Row 
-                        label="யோகம்" 
-                        value={panchang.yogam} 
-                        icon="♈"
-                      />
-                      <Row 
-                        label="கரணம்" 
-                        value={panchang.karanam} 
-                        icon="⚙️"
-                      />
-                    </tbody>
-                  </table>
+              </section>
+
+              <div className="panchangam-card p-6 rounded-2xl border border-orange-100">
+                <h3 className="text-lg font-bold text-orange-900 mb-4">அடிக்கடி கேட்கப்படுபவை</h3>
+                <div className="space-y-3 text-sm text-gray-600">
+                  <p>• <strong>திருக்கணிதம்</strong> என்பது துல்லியமான கிரக நிலைகளை அடிப்படையாகக் கொண்ட முறை.</p>
+                  <p>• இந்த பஞ்சாங்கம் 38 மாவட்டங்களுக்கும் இடத்திறகு ஏற்ப கணிக்கப்பட்டுள்ளது.</p>
+                  <p>• விசேஷ நாட்களில் விரதம் மற்றும் வழிபாட்டு முறைகள் மாறுபடலாம்.</p>
                 </div>
               </div>
 
-              {/* Timing Data */}
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-                <div className="bg-[#5D4037] px-6 py-4 text-white flex justify-between items-center">
-                  <h3 className="font-bold text-lg">🕒 சுப/அசுப நேரங்கள்</h3>
-                  <span className="text-sm bg-white/20 px-2 py-1 rounded">{selectedDist}</span>
+              <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl overflow-hidden relative">
+                <div className="absolute top-0 right-0 opacity-10">
+                   <Moon className="w-24 h-24" />
                 </div>
-                <div className="p-0">
-                  <table className="w-full text-left">
-                    <tbody className="divide-y divide-gray-100">
-                      <Row 
-                        label="நல்ல நேரம்" 
-                        value={staticTimes.nallaNeram} 
-                        isAuspicious
-                        icon="✨"
-                      />
-                      <Row 
-                        label="கௌரி நல்ல நேரம்" 
-                        value={staticTimes.gowri} 
-                        isAuspicious
-                        icon="🔱"
-                      />
-                      <Row 
-                        label="ராகு காலம்" 
-                        value={staticTimes.rahu} 
-                        isInauspicious
-                        icon="🚫"
-                      />
-                      <Row 
-                        label="எமகண்டம்" 
-                        value={staticTimes.yema} 
-                        isInauspicious
-                        icon="⌛"
-                      />
-                      <Row 
-                        label="குளிகை" 
-                        value={staticTimes.kuli} 
-                        isInauspicious
-                        icon="🕒"
-                      />
-                      <Row 
-                        label="சூலம்" 
-                        value={`${staticTimes.shoolam} திசை`} 
-                        sub={`பரிகாரம்: ${staticTimes.shoolamPariharam}`}
-                        icon="📍"
-                      />
-                    </tbody>
-                  </table>
-                </div>
+                <h3 className="text-xl font-bold mb-2">ஆன்மீகத் தகவல்</h3>
+                <p className="text-indigo-200 text-sm leading-relaxed italic">
+                  "நல்ல நேரத்தில் தொடங்கும் செயல் என்றும் வெற்றியைத் தரும்." 
+                </p>
               </div>
             </div>
 
-            {/* AI Assistant Section */}
-            <div className="mt-8">
-               <PanchangAI panchang={panchang} />
-            </div>
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-gray-500">விவரங்கள் எதுவும் கிடைக்கவில்லை. தேதியைத் தேர்ந்தெடுத்து 'கணித்திடு' பொத்தானை அழுத்தவும்.</p>
           </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-12 py-8 border-t border-gray-200 text-center text-gray-500 text-sm">
-        <p>© {new Date().getFullYear()} Ultra Precise Tamil Panchangam AI. அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.</p>
-        <p className="mt-2">குறிப்பு: இங்கு கொடுக்கப்பட்டுள்ள நேரங்கள் திருக்கணிதப் பஞ்சாங்க முறைப்படி AI தொழில்நுட்பத்தால் கணக்கிடப்பட்டவை.</p>
+      <footer className="max-w-5xl mx-auto px-4 mt-12 text-center text-gray-500 text-sm border-t pt-8">
+        <p>© 2024 தமிழ் திருக்கணித பஞ்சாங்கம். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.</p>
+        <p className="mt-1">வழங்குவது: அதிநவீன AI தொழில்நுட்பம்</p>
       </footer>
     </div>
   );
 };
 
-// Sub-components
-const Row: React.FC<{ 
-  label: string; 
-  value: string | number; 
-  sub?: string; 
-  extra?: string;
-  icon?: string;
-  badge?: string;
-  isAuspicious?: boolean;
-  isInauspicious?: boolean;
-}> = ({ label, value, sub, extra, icon, badge, isAuspicious, isInauspicious }) => {
-  return (
-    <tr className={`hover:bg-gray-50 transition-colors ${isInauspicious ? 'bg-red-50/30' : ''}`}>
-      <td className="py-4 px-6 w-1/3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{icon}</span>
-          <span className="font-bold text-gray-600">{label}</span>
-        </div>
-      </td>
-      <td className="py-4 px-6">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className={`font-extrabold text-lg ${isAuspicious ? 'text-green-700' : isInauspicious ? 'text-red-700' : 'text-gray-900'}`}>
-              {value}
-            </span>
-            {badge && (
-              <span className="bg-[#8B0000] text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                {badge}
-              </span>
-            )}
-          </div>
-          {sub && <span className="text-sm text-gray-500 font-medium">{sub}</span>}
-          {extra && <span className="text-xs text-blue-600 font-semibold mt-1">{extra}</span>}
-        </div>
-      </td>
-    </tr>
-  );
-};
+interface PanchangamItemProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}
 
-const PanchangAI: React.FC<{ panchang: PanchangData }> = ({ panchang }) => {
-  return (
-    <div className="bg-gradient-to-r from-[#8B0000] to-[#5D4037] rounded-2xl p-8 text-white shadow-2xl relative overflow-hidden group">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
-      <div className="relative z-10">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-yellow-400 p-2 rounded-lg shadow-inner">
-             <span className="text-2xl">🤖</span>
-          </div>
-          <h3 className="text-2xl font-bold">ஜோதிட AI ஆலோசகர்</h3>
-        </div>
-        <div className="space-y-4 max-w-3xl">
-          <p className="text-red-50 leading-relaxed text-lg italic">
-            "இன்று {panchang.tithi} திதி மற்றும் {panchang.nakshatram} நட்சத்திரம் கூடி வருவதால், இது ஒரு {panchang.paksha === 'வளர்பிறை' ? 'சுப' : 'ஆன்மீக ரீதியில் சிறந்த'} காலமாகும்."
-          </p>
-          <div className="grid md:grid-cols-2 gap-4 mt-6">
-            <div className="bg-black/20 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-              <h4 className="font-bold text-yellow-400 mb-2 underline decoration-yellow-400/30">சந்திர நிலை:</h4>
-              <p className="text-sm">நிலவு தற்போது {panchang.lunarPhase.toFixed(2)}° பாகையில் சஞ்சரிக்கிறது. இது மனோதிடத்தையும் செயல்திறனையும் பாதிக்கும் காரணியாகும்.</p>
-            </div>
-            <div className="bg-black/20 p-4 rounded-xl backdrop-blur-sm border border-white/10">
-              <h4 className="font-bold text-yellow-400 mb-2 underline decoration-yellow-400/30">ஆலோசனை:</h4>
-              <p className="text-sm">இன்று புதிய முயற்சிகளைத் தொடங்க {panchang.paksha === 'வளர்பிறை' ? 'மிகவும் உகந்த' : 'யோசனை செய்து செயல்பட வேண்டிய'} தினமாகும்.</p>
-            </div>
-          </div>
-        </div>
-      </div>
+const PanchangamItem: React.FC<PanchangamItemProps> = ({ icon, label, value }) => (
+  <div className="flex items-center gap-3">
+    <div className="p-2 bg-gray-50 rounded-lg">{icon}</div>
+    <div>
+      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{label}</p>
+      <p className="text-gray-800 font-medium">{value}</p>
     </div>
-  );
-};
+  </div>
+);
+
+interface TimingItemProps {
+  label: string;
+  value: string;
+  color: string;
+}
+
+const TimingItem: React.FC<TimingItemProps> = ({ label, value, color }) => (
+  <div className="flex justify-between items-center border-b border-white/40 pb-2 last:border-0">
+    <span className="text-gray-600 font-medium">{label}</span>
+    <span className={`font-bold ${color}`}>{value}</span>
+  </div>
+);
 
 export default App;
