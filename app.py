@@ -1,158 +1,160 @@
-import streamlit as st
-import swisseph as swe
-from datetime import datetime, timedelta
-import pytz
-from astral import LocationInfo
-from astral.sun import sun
-from timezonefinder import TimezoneFinder
-
-# ---------- 1. ஆப் அமைப்புகள் & CSS ----------
-st.set_page_config(page_title="AstroGuide Live Jaamakol", layout="wide")
-IST = pytz.timezone('Asia/Kolkata')
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #FFFDF9; }
-    .header-style { background: #4A0000; color: white !important; text-align: center; padding: 10px; border-radius: 8px; font-size: 1.3em; font-weight: bold; margin-bottom: 15px; }
-    .chart-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto; max-width: 650px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    .jam-chart { width: 100%; border-collapse: collapse; border: 2.5px solid #4A0000; table-layout: fixed; }
-    .jam-chart td { border: 1.5px solid #4A0000; height: 105px; vertical-align: top; padding: 5px; position: relative; }
-    .outer-top, .outer-bottom { display: flex; justify-content: space-around; width: 100%; padding: 5px 40px; color: #660066; font-weight: bold; font-size: 0.9em; }
-    .outer-side-container { display: flex; align-items: center; width: 100%; }
-    .outer-left, .outer-right { display: flex; flex-direction: column; justify-content: space-around; height: 350px; padding: 0 15px; color: #660066; font-weight: bold; font-size: 0.9em; }
-    .inner-planets { color: #000; font-weight: bold; font-size: 0.8em; line-height: 1.2; }
-    .special-marker { color: #D32F2F; font-weight: bold; font-size: 0.85em; display: block; margin-top: 3px; }
-    .rasi-label { color: #8B0000; font-size: 0.6em; position: absolute; bottom: 1px; right: 2px; opacity: 0.4; }
-    #MainMenu, footer, header {visibility: hidden;}
-    .stDeployButton {display:none;}
-    </style>
-    """, unsafe_allow_html=True)
-
-# ---------------- 2. லைவ் டைம் & தேர்வுகள் ----------------
-current_now = datetime.now(IST)
-districts = {"Chennai": [13.08, 80.27], "Madurai": [9.93, 78.12], "Trichy": [10.79, 78.70], "Coimbatore": [11.02, 76.96], "Nellai": [8.71, 77.76], "Salem": [11.66, 78.15]}
-
-st.markdown("<div class='header-style'>🔱 Live ஜாமக்கோள் பிரசன்னம்</div>", unsafe_allow_html=True)
-
-c1, c2, c3 = st.columns([1,1,1])
-with c1: s_dist = st.selectbox("ஊர்:", list(districts.keys()))
-with c2: s_date = st.date_input("தேதி:", current_now.date())
-with c3: s_time = st.time_input("நேரம்:", current_now.time())
-lat, lon = districts[s_dist]
-
-# ---------------- 3. துல்லிய கணித லாஜிக் ----------------
-def get_final_jamakkol(date_obj, time_obj, lat, lon):
-    dt_combined = datetime.combine(date_obj, time_obj)
-    tz_find = TimezoneFinder()
-    tz_name = tz_find.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
-    tz = pytz.timezone(tz_name)
-    now = tz.localize(dt_combined)
-    
-    city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
-    s = sun(observer=city.observer, date=date_obj, tzinfo=tz)
-    sunrise, sunset = s["sunrise"], s["sunset"]
-    
-    # ஜாமம் கணக்கீடு
-    is_day = sunrise <= now <= sunset
-    if is_day:
-        duration = (sunset - sunrise).total_seconds() / 8
-        elapsed = (now - sunrise).total_seconds(); j_type = "பகல்"
-    else:
-        if now < sunrise:
-            prev_sunset = sun(observer=city.observer, date=date_obj - timedelta(days=1), tzinfo=tz)["sunset"]
-            duration = (sunrise - prev_sunset).total_seconds() / 8
-            elapsed = (now - prev_sunset).total_seconds()
-        else:
-            next_sunrise = sun(observer=city.observer, date=date_obj + timedelta(days=1), tzinfo=tz)["sunrise"]
-            duration = (next_sunrise - sunset).total_seconds() / 8
-            elapsed = (now - sunset).total_seconds()
-        j_type = "இரவு"
-
-    cur_jam = min(int(elapsed / duration) + 1, 8)
-
-    # Swiss Ephemeris - துல்லியமான திருக்கணிதம்
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-    jd_ut = swe.julday(now.year, now.month, now.day, now.hour + now.minute/60.0 + now.second/3600.0 - 5.5)
-
-    # 1. கோச்சாரம் (உள்வட்டம்)
-    inner = {}
-    p_map = {0:"சூரி", 1:"சந்", 2:"செவ்", 3:"புத", 4:"குரு", 5:"சுக்", 6:"சனி", 10:"ராகு"}
-    for pid, name in p_map.items():
-        res, _ = swe.calc_ut(jd_ut, pid, swe.FLG_SIDEREAL)
-        idx = int(res[0]/30)
-        p_str = f"{name} {int(res[0]%30)}"
-        if idx not in inner: inner[idx] = []
-        inner[idx].append(p_str)
-        if pid == 10: # கேது
-            k_idx = (idx + 6) % 12
-            if k_idx not in inner: inner[k_idx] = []
-            inner[k_idx].append(f"கேது {int(res[0]%30)}")
-
-    # 2. ஜாமக்கோள் கிரகங்கள் (வெளிவட்டம்)
-    jam_order = ["சூரி", "சுக்", "புத", "சந்", "சனி", "குரு", "செவ்", "ராகு"]
-    wk_map = {6:"சூரி", 0:"சந்", 1:"செவ்", 2:"புத", 3:"குரு", 4:"சுக்", 5:"சனி"}
-    start_p = wk_map[now.weekday()]
-    start_idx = jam_order.index(start_p)
-    
-    sun_pos = swe.calc_ut(jd_ut, 0, swe.FLG_SIDEREAL)[0][0]
-    sun_sign = int(sun_pos / 30)
-    outer_res = [""] * 12
-    for i in range(8):
-        p_name = jam_order[(start_idx + i) % 8]
-        target_idx = (sun_sign + i) % 12
-        outer_res[target_idx] = p_name
-
-    # 3. உதயம், ஆருடம், கவிப்பு
-    j_prog = (elapsed % duration) / duration
-    u_deg = ((sun_sign + (cur_jam - 1)) * 30 + (j_prog * 30)) % 360
-    a_deg = ((sun_sign + cur_jam) * 30) % 360
-    k_deg = (u_deg + (sun_pos % 30)) % 360
-
-    return {
-        "inner": inner, "outer": outer_res,
-        "jam_txt": f"{j_type} {cur_jam}-ம் ஜாமம்",
-        "u": [int(u_deg/30), int(u_deg%30)], "a": [int(a_deg/30), int(a_deg%30)], "k": [int(k_deg/30), int(k_deg%30)],
-        "disp_d": now.strftime("%d-%m-%Y"), "disp_t": now.strftime("%I:%M:%S %p")
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jamakol (Jaamakaala) Chart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root{
+      --border:#6b4eff;
+      --text:#2b2b2b;
+      --muted:#6b7280;
+      --bg:#ffffff;
     }
-
-res = get_final_jamakkol(s_date, s_time, lat, lon)
-
-# ---------------- 4. கட்டம் வெளியீடு ----------------
-def get_cell(i):
-    txt = "<div class='inner-planets'>" + " ".join(res['inner'].get(i, [])) + "</div>"
-    if i == res['u'][0]: txt += f"<span class='special-marker' style='color:red;'>உத-{res['u'][1]}</span>"
-    if i == res['a'][0]: txt += f"<span class='special-marker' style='color:blue;'>ஆரு-{res['a'][1]}</span>"
-    if i == res['k'][0]: txt += f"<span class='special-marker' style='color:#7B3F00;'>கவி-{res['k'][1]}</span>"
-    rasi_names = ["மேஷ", "ரிஷ", "மிது", "கடக", "சிம்", "கன்னி", "துலா", "விரு", "தனு", "மகர", "கும்ப", "மீன"]
-    txt += f"<span class='rasi-label'>{rasi_names[i]}</span>"
-    return txt
-
-st.markdown(f"""
-<div class="chart-container">
-    <div class="outer-top">
-        <span>{res['outer'][11]}</span><span>{res['outer'][0]}</span><span>{res['outer'][1]}</span><span>{res['outer'][2]}</span>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f5f7fb;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Noto Sans Tamil',sans-serif;
+      color:var(--text);
+    }
+    .wrap{
+      width:min(720px,95vw);
+      background:var(--bg);
+      padding:16px;
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    .title{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      margin-bottom:10px;
+    }
+    .title h1{font-size:20px;margin:0}
+    .controls{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+      margin-bottom:12px;
+    }
+    .controls input{
+      width:100%;padding:8px 10px;border-radius:10px;border:1px solid #e5e7eb;
+    }
+    .chart{
+      position:relative;
+      width:100%;
+      aspect-ratio:1/1;
+      border:2px solid var(--border);
+      border-radius:10px;
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      grid-template-rows:repeat(3,1fr);
+    }
+    .cell{
+      border:1.5px solid var(--border);
+      padding:6px;
+      font-size:12px;
+      line-height:1.25;
+    }
+    .cell textarea{
+      width:100%;height:100%;border:none;resize:none;outline:none;font:inherit;color:inherit;
+    }
+    .center{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;font-size:13px;
+    }
+    .center .big{font-weight:700;margin-bottom:4px}
+    .center .muted{color:var(--muted)}
+    .legend{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px;font-size:12px
+    }
+    .btns{display:flex;gap:8px;margin-top:10px}
+    button{
+      padding:8px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;cursor:pointer
+    }
+    button.primary{background:var(--border);color:#fff;border-color:var(--border)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>ஜாமகோள் / Jaamakaala Chart</h1>
+      <small class="muted">Exact timing • Degrees based</small>
     </div>
-    <div class="outer-side-container">
-        <div class="outer-left"><span>{res['outer'][10]}</span><span>{res['outer'][9]}</span></div>
-        <table class="jam-chart">
-            <tr><td>{get_cell(11)}</td><td>{get_cell(0)}</td><td>{get_cell(1)}</td><td>{get_cell(2)}</td></tr>
-            <tr>
-                <td>{get_cell(10)}</td>
-                <td colspan="2" rowspan="2" style="text-align:center; background:#FFF9F0; vertical-align:middle;">
-                    <div style="font-weight:bold; color:#4A0000; font-size:1.1em;">ஜாமக்கோள்</div>
-                    <div style="font-size:0.8em; color:#333; margin-top:5px;">{res['disp_d']}</div>
-                    <div style="font-size:0.8em; color:#333;">{res['disp_t']}</div>
-                    <div style="font-size:0.7em; color:#8B0000; margin-top:5px; font-weight:bold;">{res['jam_txt']}</div>
-                </td>
-                <td>{get_cell(3)}</td>
-            </tr>
-            <tr><td>{get_cell(9)}</td><td>{get_cell(4)}</td></tr>
-            <tr><td>{get_cell(8)}</td><td>{get_cell(7)}</td><td>{get_cell(6)}</td><td>{get_cell(5)}</td></tr>
-        </table>
-        <div class="outer-right"><span>{res['outer'][3]}</span><span>{res['outer'][4]}</span></div>
+
+    <div class="controls">
+      <input id="date" type="date" />
+      <input id="time" type="time" step="60" />
+      <input id="place" type="text" placeholder="Place (e.g., Chennai)" />
+      <input id="note" type="text" placeholder="Note (optional)" />
     </div>
-    <div class="outer-bottom">
-        <span>{res['outer'][8]}</span><span>{res['outer'][7]}</span><span>{res['outer'][6]}</span><span>{res['outer'][5]}</span>
+
+    <div class="chart">
+      <!-- Row 1 -->
+      <div class="cell"><textarea placeholder="வடமேற்கு (NW)
+கிரகம் – degree"></textarea></div>
+      <div class="cell"><textarea placeholder="வடக்கு (N)
+கிரகம் – degree"></textarea></div>
+      <div class="cell"><textarea placeholder="வடகிழக்கு (NE)
+கிரகம் – degree"></textarea></div>
+      <!-- Row 2 -->
+      <div class="cell"><textarea placeholder="மேற்கு (W)
+கிரகம் – degree"></textarea></div>
+      <div class="cell center">
+        <div class="big" id="centerDate">—</div>
+        <div id="centerTime">—</div>
+        <div class="muted" id="centerPlace">—</div>
+        <div class="muted" id="centerNote"></div>
+      </div>
+      <div class="cell"><textarea placeholder="கிழக்கு (E)
+கிரகம் – degree"></textarea></div>
+      <!-- Row 3 -->
+      <div class="cell"><textarea placeholder="தென்மேற்கு (SW)
+கிரகம் – degree"></textarea></div>
+      <div class="cell"><textarea placeholder="தெற்கு (S)
+கிரகம் – degree"></textarea></div>
+      <div class="cell"><textarea placeholder="தென்கிழக்கு (SE)
+கிரகம் – degree"></textarea></div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+
+    <div class="legend">
+      <div>NE: Divine help</div>
+      <div>E: Start / Opportunity</div>
+      <div>SE: Money / Effort</div>
+      <div>S: Action / Blocks</div>
+      <div>SW: Karma / Loss</div>
+      <div>W: Result</div>
+      <div>NW: Movement</div>
+      <div>N: Growth</div>
+    </div>
+
+    <div class="btns">
+      <button class="primary" onclick="applyCenter()">Apply Center</button>
+      <button onclick="clearAll()">Clear</button>
+      <button onclick="window.print()">Print / PDF</button>
+    </div>
+  </div>
+
+  <script>
+    function applyCenter(){
+      const d=document.getElementById('date').value;
+      const t=document.getElementById('time').value;
+      const p=document.getElementById('place').value||'—';
+      const n=document.getElementById('note').value||'';
+      document.getElementById('centerDate').textContent=d?new Date(d).toLocaleDateString('ta-IN'):'—';
+      document.getElementById('centerTime').textContent=t||'—';
+      document.getElementById('centerPlace').textContent=p;
+      document.getElementById('centerNote').textContent=n;
+    }
+    function clearAll(){
+      document.querySelectorAll('textarea').forEach(t=>t.value='');
+      ['date','time','place','note'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('centerDate').textContent='—';
+      document.getElementById('centerTime').textContent='—';
+      document.getElementById('centerPlace').textContent='—';
+      document.getElementById('centerNote').textContent='';
+    }
+  </script>
+</body>
+</html>
