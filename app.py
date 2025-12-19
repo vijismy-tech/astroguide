@@ -7,7 +7,7 @@ from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
 # ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
-st.set_page_config(page_title="AstroGuide Professional Panchangam", layout="wide")
+st.set_page_config(page_title="AstroGuide Tamil Pro", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
 st.markdown("""
@@ -21,6 +21,8 @@ st.markdown("""
         font-size: 1.8em; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         border: 2px solid #D4AF37; margin-bottom: 25px;
     }
+    
+    .main-box { max-width: 450px; margin: auto; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px solid #8B0000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
     
     .meroon-header { 
         background-color: #8B0000; color: white !important; text-align: center; 
@@ -52,7 +54,7 @@ st.markdown("""
 # ---------- 2. லாகின் ----------
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if not st.session_state.logged_in:
-    st.markdown("<div class='header-style'>🔱 AstroGuide உள்நுழைவு</div>", unsafe_allow_html=True)
+    st.markdown("<div class='header-style'>🔱 AstroGuide Pro உள்நுழைவு</div>", unsafe_allow_html=True)
     if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
     st.stop()
 
@@ -70,7 +72,7 @@ with col_y:
 lat, lon = districts[s_dist]
 
 # ---------- 4. ஜோதிடக் கணக்கீட்டு இயந்திரம் ----------
-def get_full_panchangam(date_obj, time_obj, lat, lon):
+def get_complete_astro_data(date_obj, time_obj, lat, lon):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     dt_combined = datetime.combine(date_obj, time_obj)
     tf = TimezoneFinder(); tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
@@ -112,10 +114,10 @@ def get_full_panchangam(date_obj, time_obj, lat, lon):
     karans = ["பவம்", "பாலவம்", "கௌலவம்", "சைதுலை", "கரசை", "வணிசை", "பத்திரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்கினம்"]
     months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
     
-    # தானியங்கி வருடம்
+    # தானியங்கி விசுவாசு வருடம்
     y_name = "விசுவாசு" if (date_obj.year > 2025 or (date_obj.year == 2025 and date_obj.month >= 4 and date_obj.day >= 14)) else "குரோதி"
 
-    # ராசி கட்டம் (நடப்பு நேரம்)
+    # ராசி கட்டம்
     p_map = {0: "சூரியன்", 1: "சந்திரன்", 2: "செவ்வாய்", 3: "புதன்", 4: "குரு", 5: "சுக்கிரன்", 6: "சனி", 10: "ராகு"}
     res_pos = {}
     for pid, name in p_map.items():
@@ -139,10 +141,10 @@ def get_full_panchangam(date_obj, time_obj, lat, lon):
         "rahu": ["10:30-12:00", "09:00-10:30", "12:00-13:30", "13:30-15:00", "15:00-16:30", "09:00-10:30", "16:30-18:00"][date_obj.weekday()],
         "yema": ["07:30-09:00", "09:00-10:30", "10:30-12:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][date_obj.weekday()],
         "kuli": ["06:00-07:30", "13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "15:00-16:30"][date_obj.weekday()],
-        "res_pos": res_pos, "f_date": dt_combined.strftime("%d-%m-%Y"), "f_time": dt_combined.strftime("%I:%M %p")
+        "chart": res_pos, "f_date": dt_combined.strftime("%d-%m-%Y"), "f_time": dt_combined.strftime("%I:%M %p")
     }
 
-res = get_full_panchangam(s_date, s_time, lat, lon)
+res = get_complete_astro_data(s_date, s_time, lat, lon)
 
 # ---------- 5. காட்சி அமைப்பு ----------
 
@@ -173,7 +175,7 @@ st.markdown(f"""
 
 st.markdown("<div class='meroon-header'>🎡 ஸ்ரீ திருக்கணித நேரடி ராசி கட்டம்</div>", unsafe_allow_html=True)
 def draw_box(i):
-    planets = "".join(res['res_pos'].get(i, []))
+    planets = "".join(res['chart'].get(i, []))
     rasi_names = ["மேஷம்", "ரிஷபம்", "மிதுனம்", "கடகம்", "சிம்மம்", "கன்னி", "துலாம்", "விருச்சிகம்", "தனுசு", "மகரம்", "கும்பம்", "மீனம்"]
     return f"{planets}<span class='rasi-label'>{rasi_names[i]}</span>"
 
@@ -200,8 +202,10 @@ st.markdown(f"""
 # சந்திராஷ்டமம்
 st.markdown("<div class='meroon-header'>🌙 சந்திராஷ்டமம்</div>", unsafe_allow_html=True)
 naks_list = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
+c_idx = res['n_idx']
 st.markdown(f"""
 <div class="main-box" style="border-left: 5px solid red; max-width: 620px;">
-    ⚠️ <b>இன்று சந்திராஷ்டமம்:</b> <b style="color:red;">{naks_list[(res['n_idx']-16)%27]}</b> நட்சத்திரம் பிறந்தவர்களுக்கு.
+    ⚠️ <b>இன்று சந்திராஷ்டமம்:</b> <b style="color:red;">{naks_list[(c_idx-16)%27]}</b> ({res['n_e']} வரை)<br>
+    🕒 <b>அடுத்து சந்திராஷ்டமம்:</b> <b>{naks_list[(c_idx-15)%27]}</b> ({res['n_e']} முதல்)
 </div>
 """, unsafe_allow_html=True)
