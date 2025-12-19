@@ -16,29 +16,15 @@ st.markdown("""
     h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
     .header-style { color: #8B0000 !important; text-align: center; font-weight: bold; margin-top: -30px; margin-bottom: 5px; font-size: 1.1em; }
     .main-box { max-width: 450px; margin: auto; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px solid #8B0000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
-    
-    .meroon-header { 
-        background-color: #8B0000; 
-        color: white !important; 
-        text-align: center; 
-        padding: 10px; 
-        border-radius: 5px; 
-        font-size: 1em; 
-        font-weight: bold; 
-        margin-top: 15px; 
-        margin-bottom: 10px;
-    }
-    
+    .meroon-header { background-color: #8B0000; color: white !important; text-align: center; padding: 10px; border-radius: 5px; font-size: 1em; font-weight: bold; margin-top: 15px; margin-bottom: 10px; }
     .panchang-table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #8B0000; font-size: 0.78em; }
     .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; }
     .panchang-table td { padding: 5px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
     .next-info { color: #8B0000 !important; font-size: 0.85em; font-style: italic; display: block; margin-top: 2px; }
-
     .rasi-chart { width: 100%; border-collapse: collapse; border: 2px solid #8B0000; table-layout: fixed; }
     .rasi-chart td { border: 1px solid #8B0000; height: 95px; vertical-align: top; padding: 4px; font-size: 0.65em; background: #fff; }
     .rasi-label { color: #8B0000; font-weight: bold; display: block; border-bottom: 1px solid #eee; margin-bottom: 2px; }
     .planet-text { color: #000; font-weight: 600; display: block; line-height: 1.2; }
-    
     .vrat-display-table { width:100%; border-collapse: collapse; background-color:#FFFAF0; }
     .vrat-display-table td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
     .asubha-row { background-color: #FFF5F5; }
@@ -60,10 +46,10 @@ if not st.session_state.logged_in:
 districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15]}
 st.markdown("<h1 class='header-style'>🔱 AstroGuide பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
 st.markdown('<div class="main-box">', unsafe_allow_html=True)
-c1, c2 = st.columns(2)
-with c1:
+col1, col2 = st.columns(2)
+with col1:
     s_dist = st.selectbox("ஊர்:", list(districts.keys()))
-with c2:
+with col2:
     s_date = st.date_input("தேதி:", datetime.now(IST))
 st.markdown('</div>', unsafe_allow_html=True)
 lat, lon = districts[s_dist]
@@ -75,7 +61,6 @@ def get_all_astro_data(date_obj, lat, lon):
     city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
     s = sun(observer=city.observer, date=date_obj, tzinfo=pytz.timezone(tz_name))
     mid = s["sunrise"] + (s["sunset"] - s["sunrise"]) / 2
-    
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     jd_ut = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
 
@@ -97,7 +82,7 @@ def get_all_astro_data(date_obj, lat, lon):
             if res_val[lookup] == cur_idx: low = mid_v
             else: high = mid_v
         dt = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=low)
-        return f"{'இன்று' if dt.date() == date_obj else 'நாளை'} {dt.strftime('%I:%M %p')}"
+        return dt.strftime('%I:%M %p')
 
     m_deg, s_deg, t_n, n_n, y_n, k_n = get_raw(jd_ut)
     tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
@@ -114,7 +99,7 @@ def get_all_astro_data(date_obj, lat, lon):
         p_val = f"{name} {round(deg % 30, 2)}°"
         if idx not in transit: transit[idx] = []
         transit[idx].append(p_val)
-        if pid == 10: 
+        if pid == 10:
             k_deg = (deg + 180) % 360; k_idx = int(k_deg / 30)
             if k_idx not in transit: transit[k_idx] = []
             transit[k_idx].append(f"கேது {round(k_deg % 30, 2)}°")
@@ -137,72 +122,41 @@ def get_all_astro_data(date_obj, lat, lon):
 
 res = get_all_astro_data(s_date, lat, lon)
 
-# ---------------- 5. பஞ்சாங்க அட்டவணை ----------------
+# ---------------- 5. காட்சி ----------------
 st.markdown(f"""
 <table class="panchang-table">
     <tr><th colspan="2">பஞ்சாங்கம் - {s_dist} ({res['wara']})</th></tr>
     <tr><td>📅 <b>தமிழ் தேதி</b></td><td><b>{res['tamil_date']}</b></td></tr>
-    <tr><td>🌅 <b>சூரிய உதயம் / அஸ்தமனம்</b></td><td><b>{res['rise']}</b> / {res['set']}</td></tr>
-    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> வரை ({res['t_e']})</td></tr>
-    <tr>
-        <td>⭐ <b>நட்சத்திரம்</b></td>
-        <td>
-            <b>{res['nak']}</b> ({res['n_e']} வரை)<br>
-            <span class='next-info'>அடுத்து: <b>{res['n_nx']}</b></span>
-        </td>
-    </tr>
+    <tr><td>🌅 <b>உதயம்/அஸ்தமனம்</b></td><td><b>{res['rise']}</b> / {res['set']}</td></tr>
+    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> ({res['t_e']} வரை)</td></tr>
+    <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{res['nak']}</b> ({res['n_e']} வரை)<br><small class='next-info'>அடுத்து: {res['n_nx']}</small></td></tr>
     <tr><td>🌀 <b>யோகம் / கரணம்</b></td><td>{res['yoga']} / {res['karan']}</td></tr>
     <tr><td>📍 <b>சூலம்</b></td><td>{res['shoolam']}</td></tr>
     <tr style="background:#f0f7ff;"><td>📊 <b>சந்திர பாகை</b></td><td><b>{res['moon_deg']}°</b></td></tr>
 </table>
 """, unsafe_allow_html=True)
 
-# ---------------- 6. சுப & அசுப நேரங்கள் ----------------
-st.markdown("<div class='meroon-header'>⏳ இன்றைய சுப & அசுப நேரங்கள்</div>", unsafe_allow_html=True)
+st.markdown("<div class='meroon-header'>⏳ சுப & அசுப நேரங்கள்</div>", unsafe_allow_html=True)
 st.markdown(f"""
 <table class="panchang-table">
-    <tr><th colspan="2" style="background-color: #2E7D32;">✨ சுப நேரங்கள்</th></tr>
-    <tr><td>🌟 <b>கௌரி நல்ல நேரம்</b></td><td><b>{res['gowri']}</b></td></tr>
-    <tr><td>☀️ <b>அபிஜித் முகூர்த்தம்</b></td><td><b>{res['abhijit']}</b></td></tr>
-    <tr><th colspan="2" style="background-color: #d32f2f;">🚫 அசுப நேரங்கள்</th></tr>
-    <tr class="asubha-row"><td>🌑 <b>ராகு காலம்</b></td><td><b>{res['rahu']}</b></td></tr>
-    <tr class="asubha-row"><td>🔥 <b>எமகண்டம்</b></td><td><b>{res['yema']}</b></td></tr>
-    <tr class="asubha-row"><td>🌀 <b>குளிகை</b></td><td><b>{res['kuli']}</b></td></tr>
+    <tr style="background:#E8F5E9;"><td>🌟 <b>நல்ல நேரம் (கௌரி)</b></td><td><b>{res['gowri']}</b></td></tr>
+    <tr style="background:#FFF5F5;"><td>🌑 <b>ராகு காலம்</b></td><td><b>{res['rahu']}</b></td></tr>
+    <tr style="background:#FFF5F5;"><td>🔥 <b>எமகண்டம்</b></td><td><b>{res['yema']}</b></td></tr>
+    <tr style="background:#FFF5F5;"><td>🌀 <b>குளிகை</b></td><td><b>{res['kuli']}</b></td></tr>
 </table>
 """, unsafe_allow_html=True)
 
-# ---------------- 7. கோச்சார ராசி கட்டம் ----------------
 st.markdown("<div class='meroon-header'>🎡 இன்றைய கோச்சார ராசி கட்டம்</div>", unsafe_allow_html=True)
-def get_p(i): 
-    return "".join([f"<span class='planet-text'>{x}</span>" for x in res['transit'].get(i, [])])
-
+def get_p(i): return "".join([f"<span class='planet-text'>{x}</span>" for x in res['transit'].get(i, [])])
 st.markdown(f"""
 <table class="rasi-chart">
-    <tr>
-        <td><span class='rasi-label'>மீனம்</span>{get_p(11)}</td>
-        <td><span class='rasi-label'>மேஷம்</span>{get_p(0)}</td>
-        <td><span class='rasi-label'>ரிஷபம்</span>{get_p(1)}</td>
-        <td><span class='rasi-label'>மிதுனம்</span>{get_p(2)}</td>
-    </tr>
-    <tr>
-        <td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td>
-        <td colspan="2" rowspan="2" style="background:#fdfdfd; text-align:center; vertical-align:middle; color:#8B0000; font-weight:bold;">AstroGuide<br>கோச்சாரம்</td>
-        <td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td>
-    </tr>
-    <tr>
-        <td><span class='rasi-label'>மகரம்</span>{get_p(9)}</td>
-        <td><span class='rasi-label'>சிம்மம்</span>{get_p(4)}</td>
-    </tr>
-    <tr>
-        <td><span class='rasi-label'>தனுசு</span>{get_p(8)}</td>
-        <td><span class='rasi-label'>விருச்சிகம்</span>{get_p(7)}</td>
-        <td><span class='rasi-label'>துலாம்</span>{get_p(6)}</td>
-        <td><span class='rasi-label'>கன்னி</span>{get_p(5)}</td>
-    </tr>
+    <tr><td><span class='rasi-label'>மீனம்</span>{get_p(11)}</td><td><span class='rasi-label'>மேஷம்</span>{get_p(0)}</td><td><span class='rasi-label'>ரிஷபம்</span>{get_p(1)}</td><td><span class='rasi-label'>மிதுனம்</span>{get_p(2)}</td></tr>
+    <tr><td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td><td colspan="2" rowspan="2" style="background:#f9f9f9; text-align:center; color:#8B0000; font-weight:bold;">AstroGuide</td><td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td></tr>
+    <tr><td><span class='rasi-label'>மகரம்</span>{get_p(9)}</td><td><span class='rasi-label'>சிம்மம்</span>{get_p(4)}</td></tr>
+    <tr><td><span class='rasi-label'>தனுசு</span>{get_p(8)}</td><td><span class='rasi-label'>விருச்சிகம்</span>{get_p(7)}</td><td><span class='rasi-label'>துலாம்</span>{get_p(6)}</td><td><span class='rasi-label'>கன்னி</span>{get_p(5)}</td></tr>
 </table>
 """, unsafe_allow_html=True)
 
-# ---------------- 8. சந்திராஷ்டமம் ----------------
 st.markdown("<div class='meroon-header'>🌙 இன்றைய சந்திராஷ்டமம்</div>", unsafe_allow_html=True)
 naks_list = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
 try:
@@ -210,52 +164,25 @@ try:
     st.markdown(f"""
     <table class="panchang-table">
         <tr style="background:#FFF5F5;"><td>⚠️ <b>சந்திராஷ்டமம்</b></td><td><b style="color:red;">{naks_list[(c_idx-16)%27]}</b> ({res['n_e']} வரை)</td></tr>
-        <tr><td>🕒 <b>அடுத்து</b></td><td><b>{naks_list[(c_idx-15)%27]}</b> ({res['n_e']} முதல்)</td></tr>
     </table>
     """, unsafe_allow_html=True)
-except: 
-    pass
+except: pass
 
-# ---------------- 9. விசேஷங்கள் (சிறிய அட்டவணை & சின்னங்களுடன்) ----------------
 st.markdown("<div class='meroon-header'>🗓️ இன்றைய விசேஷங்கள்</div>", unsafe_allow_html=True)
-
 vrat_list = [
     ("அமாவாசை", None, "மார்கழி", "🐒", "ஸ்ரீ ஹனுமன் ஜெயந்தி", "பயம் நீங்கும், ஹனுமன் அருள் கிட்டும்."),
     ("அமாவாசை", None, None, "🌑", "அமாவாசை தர்ப்பணம்", "முன்னோர்களின் ஆசி கிட்டும்."),
-    ("பௌர்ணமி", None, None, "🌕", "பௌர்ணமி விரதம்", "செல்வம் மற்றும் மன அமைதி தரும்."),
-    ("சதுர்த்தி", None, None, "🐘", "சங்கடஹர சதுர்த்தி", "காரியத் தடைகள் நீங்கும்."),
-    ("சஷ்டி", None, None, "🔱", "சஷ்டி விரதம்", "முருகன் அருள் கிட்டும்."),
-    ("திரயோதசி", None, None, "🐂", "பிரதோஷம்", "சிவனருள் கிட்டும், கஷ்டங்கள் நீங்கும்."),
-    ("ஏகாதசி", None, None, "📿", "ஏகாதசி விரதம்", "பெருமாள் அருள், பாவம் நீங்கும்."),
-    (None, "கார்த்திகை", None, "🔥", "கிருத்திகை விரதம்", "முருகனின் விசேஷ வழிபாடு."),
-    (None, "திருவோணம்", None, "🌺", "திருவோண விரதம்", "விஷ்ணுவின் அருள் கிட்டும்.")
+    ("பௌர்ணமி", None, None, "🌕", "பௌர்ணமி விரதம்", "செல்வம் தரும்."),
+    ("திரயோதசி", None, None, "🐂", "பிரதோஷம்", "சிவனருள் கிட்டும்."),
+    ("சதுர்த்தி", None, None, "🐘", "சதுர்த்தி", "விநாயகர் அருள்.")
 ]
 
 found_v = []
 for v_tithi, v_nak, v_month, v_sym, v_name, v_desc in vrat_list:
-    t_match = (v_tithi == res['tithi'])
-    n_match = (v_nak is None or v_nak == res['nak'])
-    m_match = (v_month is None or v_month == res['month_name'])
-    
-    if t_match and n_match and m_match:
-        found_v.append(f"""
-            <tr>
-                <td style='font-size: 1.5em; width: 45px; text-align: center;'>{v_sym}</td>
-                <td>
-                    <b style='color: #8B0000; font-size: 0.9em;'>{v_name}</b><br>
-                    <small style='color: #555; font-size: 0.8em;'>{v_desc}</small>
-                </td>
-            </tr>
-        """)
+    if v_tithi == res['tithi'] and (v_month is None or v_month == res['month_name']):
+        found_v.append(f"<tr><td style='font-size:1.5em; width:45px;'>{v_sym}</td><td><b>{v_name}</b><br><small>{v_desc}</small></td></tr>")
 
 if found_v:
-    vrat_table_html = f"""
-    <div class="main-box" style="padding: 5px;">
-        <table class="vrat-display-table" style="width: 100%;">
-            {''.join(found_v)}
-        </table>
-    </div>
-    """
-    st.markdown(vrat_table_html, unsafe_allow_html=True)
+    st.markdown(f"<div class='main-box'><table class='vrat-display-table'>{''.join(found_v)}</table></div>", unsafe_allow_html=True)
 else:
-    st.info("இன்று குறிப்பிட்ட விசேஷங்கள் ஏதுமில்லை.")
+    st.info("இன்று விசேஷங்கள் ஏதுமில்லை.")
