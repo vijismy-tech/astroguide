@@ -8,16 +8,24 @@ from timezonefinder import TimezoneFinder
 
 # ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
 st.set_page_config(page_title="AstroGuide Tamil", layout="wide")
-#MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display:none;}
 IST = pytz.timezone('Asia/Kolkata')
 
 st.markdown("""
     <style>
 
     .stApp { background-color: #FFFFFF; }
+st.markdown("""
+    <style>
+    /* ஏற்கனவே உள்ள உங்கள் பழைய CSS வரிகள் இங்கே இருக்கும்... */
+    .stApp { background-color: #FFFFFF; }
+
+    /* புதிய வரிகளை இங்கே மட்டும் சேர்க்கவும் */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    </style>
+    """, unsafe_allow_html=True)
     h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
     .header-style { color: #8B0000 !important; text-align: center; font-weight: bold; margin-top: -30px; margin-bottom: 5px; font-size: 1.1em; }
     .main-box { max-width: 450px; margin: auto; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px solid #8B0000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
