@@ -46,10 +46,14 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # ---------------- 2. லாகின் ----------------
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 if not st.session_state.logged_in:
     st.markdown("<h1 class='header-style'>🔱 AstroGuide உள்நுழைவு</h1>", unsafe_allow_html=True)
-    if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
+    if st.button("உள்ளே செல்க"):
+        st.session_state.logged_in = True
+        st.rerun()
     st.stop()
 
 # ---------------- 3. தேர்வுகள் ----------------
@@ -57,14 +61,17 @@ districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.
 st.markdown("<h1 class='header-style'>🔱 AstroGuide பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
 st.markdown('<div class="main-box">', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
-with c1: s_dist = st.selectbox("ஊர்:", list(districts.keys()))
-with c2: s_date = st.date_input("தேதி:", datetime.now(IST))
+with c1:
+    s_dist = st.selectbox("ஊர்:", list(districts.keys()))
+with c2:
+    s_date = st.date_input("தேதி:", datetime.now(IST))
 st.markdown('</div>', unsafe_allow_html=True)
 lat, lon = districts[s_dist]
 
 # ---------------- 4. ஜோதிடக் கணக்கீடுகள் ----------------
 def get_all_astro_data(date_obj, lat, lon):
-    tf = TimezoneFinder(); tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
+    tf = TimezoneFinder()
+    tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
     city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
     s = sun(observer=city.observer, date=date_obj, tzinfo=pytz.timezone(tz_name))
     mid = s["sunrise"] + (s["sunset"] - s["sunrise"]) / 2
@@ -73,7 +80,8 @@ def get_all_astro_data(date_obj, lat, lon):
     jd_ut = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
 
     def get_raw(jd):
-        m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL); s_p, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
+        m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL)
+        s_p, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
         t = ((m[0]-s_p[0])%360)/12
         n = m[0]/(360/27)
         y = (m[0]+s_p[0])/(360/27)
@@ -165,14 +173,32 @@ st.markdown(f"""
 
 # ---------------- 7. கோச்சார ராசி கட்டம் ----------------
 st.markdown("<div class='meroon-header'>🎡 இன்றைய கோச்சார ராசி கட்டம்</div>", unsafe_allow_html=True)
-def get_p(i): return "".join([f"<span class='planet-text'>{x}</span>" for x in res['transit'].get(i, [])])
+def get_p(i): 
+    return "".join([f"<span class='planet-text'>{x}</span>" for x in res['transit'].get(i, [])])
 
 st.markdown(f"""
 <table class="rasi-chart">
-    <tr><td><span class='rasi-label'>மீனம்</span>{get_p(11)}</td><td><span class='rasi-label'>மேஷம்</span>{get_p(0)}</td><td><span class='rasi-label'>ரிஷபம்</span>{get_p(1)}</td><td><span class='rasi-label'>மிதுனம்</span>{get_p(2)}</td></tr>
-    <tr><td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td><td colspan="2" rowspan="2" style="background:#fdfdfd; text-align:center; vertical-align:middle; color:#8B0000; font-weight:bold;">AstroGuide<br>கோச்சாரம்</td><td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td></tr>
-    <tr><td><span class='rasi-label'>மகரம்</span>{get_p(9)}</td><td><span class='rasi-label'>சிம்மம்</span>{get_p(4)}</td></tr>
-    <tr><td><span class='rasi-label'>தனுசு</span>{get_p(8)}</td><td><span class='rasi-label'>விருச்சிகம்</span>{get_p(7)}</td><td><span class='rasi-label'>துலாம்</span>{get_p(6)}</td><td><span class='rasi-label'>கன்னி</span>{get_p(5)}</td></tr>
+    <tr>
+        <td><span class='rasi-label'>மீனம்</span>{get_p(11)}</td>
+        <td><span class='rasi-label'>மேஷம்</span>{get_p(0)}</td>
+        <td><span class='rasi-label'>ரிஷபம்</span>{get_p(1)}</td>
+        <td><span class='rasi-label'>மிதுனம்</span>{get_p(2)}</td>
+    </tr>
+    <tr>
+        <td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td>
+        <td colspan="2" rowspan="2" style="background:#fdfdfd; text-align:center; vertical-align:middle; color:#8B0000; font-weight:bold;">AstroGuide<br>கோச்சாரம்</td>
+        <td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td>
+    </tr>
+    <tr>
+        <td><span class='rasi-label'>மகரம்</span>{get_p(9)}</td>
+        <td><span class='rasi-label'>சிம்மம்</span>{get_p(4)}</td>
+    </tr>
+    <tr>
+        <td><span class='rasi-label'>தனுசு</span>{get_p(8)}</td>
+        <td><span class='rasi-label'>விருச்சிகம்</span>{get_p(7)}</td>
+        <td><span class='rasi-label'>துலாம்</span>{get_p(6)}</td>
+        <td><span class='rasi-label'>கன்னி</span>{get_p(5)}</td>
+    </tr>
 </table>
 """, unsafe_allow_html=True)
 
@@ -187,12 +213,12 @@ try:
         <tr><td>🕒 <b>அடுத்து</b></td><td><b>{naks_list[(c_idx-15)%27]}</b> ({res['n_e']} முதல்)</td></tr>
     </table>
     """, unsafe_allow_html=True)
-except: pass
+except: 
+    pass
 
 # ---------------- 9. விசேஷங்கள் (சிறிய அட்டவணை & சின்னங்களுடன்) ----------------
 st.markdown("<div class='meroon-header'>🗓️ இன்றைய விசேஷங்கள்</div>", unsafe_allow_html=True)
 
-# விசேஷ தரவுத்தளம்: (திதி, நட்சத்திரம், மாதம், சின்னம், பெயர், விளக்கம்)
 vrat_list = [
     ("அமாவாசை", None, "மார்கழி", "🐒", "ஸ்ரீ ஹனுமன் ஜெயந்தி", "பயம் நீங்கும், ஹனுமன் அருள் கிட்டும்."),
     ("அமாவாசை", None, None, "🌑", "அமாவாசை தர்ப்பணம்", "முன்னோர்களின் ஆசி கிட்டும்."),
@@ -225,7 +251,7 @@ for v_tithi, v_nak, v_month, v_sym, v_name, v_desc in vrat_list:
 if found_v:
     vrat_table_html = f"""
     <div class="main-box" style="padding: 5px;">
-        <table class="vrat-display-table">
+        <table class="vrat-display-table" style="width: 100%;">
             {''.join(found_v)}
         </table>
     </div>
