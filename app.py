@@ -1,270 +1,146 @@
-
 import streamlit as st
 import swisseph as swe
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
-# ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
-st.set_page_config(page_title="AstroGuide Tamil", layout="wide")
-IST = pytz.timezone('Asia/Kolkata')
-
-st.markdown("""
-    <style>
-    .stApp { background-color: #FFFFFF; }
-    h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
-    .header-style { color: #8B0000 !important; text-align: center; font-weight: bold; margin-top: -30px; margin-bottom: 5px; font-size: 1.1em; }
-    .main-box { max-width: 450px; margin: auto; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px solid #8B0000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
-    
-    .meroon-header { 
-        background-color: #8B0000; 
-        color: white !important; 
-        text-align: center; 
-        padding: 10px; 
-        border-radius: 5px; 
-        font-size: 1em; 
-        font-weight: bold; 
-        margin-top: 15px; 
-        margin-bottom: 10px;
-    }
-    
-    .panchang-table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #8B0000; font-size: 0.78em; }
-    .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; }
-    .panchang-table td { padding: 5px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
-    .next-info { color: #8B0000 !important; font-size: 0.85em; font-style: italic; display: block; margin-top: 2px; }
-
-    .rasi-chart { width: 100%; border-collapse: collapse; border: 2px solid #8B0000; table-layout: fixed; }
-    .rasi-chart td { border: 1px solid #8B0000; height: 95px; vertical-align: top; padding: 4px; font-size: 0.65em; background: #fff; }
-    .rasi-label { color: #8B0000; font-weight: bold; display: block; border-bottom: 1px solid #eee; margin-bottom: 2px; }
-    .planet-text { color: #000; font-weight: 600; display: block; line-height: 1.2; }
-    
-    .vrat-table { width:100%; border:1px solid #8B0000; border-radius:10px; background-color:#FFFAF0; margin-bottom:10px; border-collapse: separate; }
-    .asubha-row { background-color: #FFF5F5; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ---------------- 2. லாகின் ----------------
-if "logged_in" not in st.session_state: st.session_state.logged_in = False
-if not st.session_state.logged_in:
-    st.markdown("<h1 class='header-style'>🔱 AstroGuide உள்நுழைவு</h1>", unsafe_allow_html=True)
-    if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
-    st.stop()
-
-# ---------------- 3. தேர்வுகள் ----------------
-districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15]}
-st.markdown("<h1 class='header-style'>🔱 AstroGuide பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
-st.markdown('<div class="main-box">', unsafe_allow_html=True)
-c1, c2 = st.columns(2)
-with c1: s_dist = st.selectbox("ஊர்:", list(districts.keys()))
-with c2: s_date = st.date_input("தேதி:", datetime.now(IST))
-st.markdown('</div>', unsafe_allow_html=True)
-lat, lon = districts[s_dist]
-
-# ---------------- 4. ஜோதிடக் கணக்கீடுகள் ----------------
-def get_all_astro_data(date_obj, lat, lon):
-    tf = TimezoneFinder(); tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
-    city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
-    s = sun(observer=city.observer, date=date_obj, tzinfo=pytz.timezone(tz_name))
-    mid = s["sunrise"] + (s["sunset"] - s["sunrise"]) / 2
-    
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-    jd_ut = swe.julday(date_obj.year, date_obj.month, date_obj.day, 5.5)
-
-    def get_raw(jd):
-        m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL); s_p, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
-        t = ((m[0]-s_p[0])%360)/12
-        n = m[0]/(360/27)
-        y = (m[0]+s_p[0])/(360/27)
-        k = ((m[0]-s_p[0])%360)/6
-        return m[0], s_p[0], int(t), int(n), int(y % 27), int(k)
-
-    def find_end_time(jd_base, cur_idx, p_type):
-        low, high = 0.0, 1.3
-        for _ in range(35):
-            mid_v = (low + high) / 2
-            res_val = get_raw(jd_base + mid_v)
-            lookup = {"t":2, "n":3, "y":4, "k":5}[p_type]
-            if res_val[lookup] == cur_idx: low = mid_v
-            else: high = mid_v
-        dt = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=low)
-        return f"{'இன்று' if dt.date() == date_obj else 'நாளை'} {dt.strftime('%I:%M %p')}"
-
-    m_deg, s_deg, t_n, n_n, y_n, k_n = get_raw(jd_ut)
-    tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
-    naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
-    yogas = ["விஷ்கம்பம்", "ப்ரீதி", "ஆயுஷ்மான்", "சௌபாக்கியம்", "சோபனம்", "அதிகண்டம்", "சுகர்மம்", "திருதி", "சூலம்", "கண்டம்", "விருத்தி", "துருவம்", "வியாகாதம்", "ஹர்ஷணம்", "வஜ்ரம்", "சித்தி", "வியதீபாதம்", "வரியான்", "பரிகம்", "சிவம்", "சித்தம்", "சாத்தியம்", "சுபம்", "சுப்பிரம்", "பிராமியம்", "ஐந்திரம்", "வைதிருதி"]
-    karans = ["பவம்", "பாலவம்", "கௌலவம்", "சைதுலை", "கரசை", "வணிசை", "பத்திரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்கினம்"]
-    months = ['சித்திரை', 'வைகாசி', 'ஆனி', 'ஆடி', 'ஆவணி', 'புரட்டாசி', 'ஐப்பசி', 'கார்த்திகை', 'மார்கழி', 'தை', 'மாசி', 'பங்குனி']
-    
-    # கோச்சார கிரகங்கள்
-    planet_ids = {0: "சூரியன்", 1: "சந்திரன்", 2: "செவ்வாய்", 3: "புதன்", 4: "குரு", 5: "சுக்கிரன்", 6: "சனி", 10: "ராகு"}
-    transit = {}
-    for pid, name in planet_ids.items():
-        pos, _ = swe.calc_ut(jd_ut, pid, swe.FLG_SIDEREAL)
-        deg = pos[0]; idx = int(deg / 30)
-        p_val = f"{name} {round(deg % 30, 2)}°"
-        if idx not in transit: transit[idx] = []
-        transit[idx].append(p_val)
-        if pid == 10: # கேது
-            k_deg = (deg + 180) % 360; k_idx = int(k_deg / 30)
-            if k_idx not in transit: transit[k_idx] = []
-            transit[k_idx].append(f"கேது {round(k_deg % 30, 2)}°")
-
-    return {
-        "tamil_date": f"{months[int(s_deg/30)%12]} {int(s_deg%30)+1}",
-        "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()],
-        "rise": s["sunrise"].strftime("%I:%M %p"), "set": s["sunset"].strftime("%I:%M %p"),
-        "tithi": tithis[t_n % 30], "t_e": find_end_time(jd_ut, t_n, "t"), "t_nx": tithis[(t_n+1)%30],
-        "nak": naks[n_n % 27], "n_e": find_end_time(jd_ut, n_n, "n"), "n_nx": naks[(n_n+1)%27],
-        "yoga": yogas[y_n % 27], "karan": karans[k_n % 11],
-        "abhijit": f"{(mid - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid + timedelta(minutes=24)).strftime('%I:%M %p')}",
-        "rahu": ["07:30-09:00", "15:00-16:30", "12:00-13:30", "13:30-15:00", "10:30-12:00", "09:00-10:30", "16:30-18:00"][date_obj.weekday()],
-        "yema": ["10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][date_obj.weekday()],
-        "kuli": ["13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30"][date_obj.weekday()],
-        "gowri": ["01:30-02:30 PM", "10:30-11:30 AM", "09:30-10:30 AM", "01:30-02:30 PM", "12:30-01:30 PM", "09:30-10:30 AM", "10:30-11:30 AM"][date_obj.weekday()],
-        "shoolam": ["கிழக்கு", "வடக்கு", "வடக்கு", "தெற்கு", "மேற்கு", "கிழக்கு", "மேற்கு"][date_obj.weekday()],
-        "moon_deg": round(m_deg % 30, 2), "transit": transit, "month_name": months[int(s_deg/30)%12]
-    }
-
-res = get_all_astro_data(s_date, lat, lon)
-
-# ---------------- 5. பஞ்சாங்க அட்டவணை ----------------
-st.markdown(f"""
-<table class="panchang-table">
-    <tr><th colspan="2">பஞ்சாங்கம் - {s_dist} ({res['wara']})</th></tr>
-    <tr><td>📅 <b>தமிழ் தேதி</b></td><td><b>{res['tamil_date']}</b></td></tr>
-    <tr><td>🌅 <b>சூரிய உதயம் / அஸ்தமனம்</b></td><td><b>{res['rise']}</b> / {res['set']}</td></tr>
-    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> வரை ({res['t_e']})</td></tr>
-    <tr>
-        <td>⭐ <b>நட்சத்திரம்</b></td>
-        <td>
-            <b>{res['nak']}</b> ({res['n_e']} வரை)<br>
-            <span class='next-info'>அடுத்து: <b>{res['n_nx']}</b></span>
-        </td>
-    </tr>
-    <tr><td>🌀 <b>யோகம் / கரணம்</b></td><td>{res['yoga']} / {res['karan']}</td></tr>
-    <tr><td>📍 <b>சூலம்</b></td><td>{res['shoolam']}</td></tr>
-    <tr style="background:#f0f7ff;"><td>📊 <b>சந்திர பாகை</b></td><td><b>{res['moon_deg']}°</b></td></tr>
-</table>
-""", unsafe_allow_html=True)
-
-# ---------------- 6. சுப & அசுப நேரங்கள் ----------------
-st.markdown("<div class='meroon-header'>⏳ இன்றைய சுப & அசுப நேரங்கள்</div>", unsafe_allow_html=True)
-st.markdown(f"""
-<table class="panchang-table">
-    <tr><th colspan="2" style="background-color: #2E7D32;">✨ சுப நேரங்கள்</th></tr>
-    <tr><td>🌟 <b>கௌரி நல்ல நேரம்</b></td><td><b>{res['gowri']}</b></td></tr>
-    <tr><td>☀️ <b>அபிஜித் முகூர்த்தம்</b></td><td><b>{res['abhijit']}</b></td></tr>
-    <tr><th colspan="2" style="background-color: #d32f2f;">🚫 அசுப நேரங்கள்</th></tr>
-    <tr class="asubha-row"><td>🌑 <b>ராகு காலம்</b></td><td><b>{res['rahu']}</b></td></tr>
-    <tr class="asubha-row"><td>🔥 <b>எமகண்டம்</b></td><td><b>{res['yema']}</b></td></tr>
-    <tr class="asubha-row"><td>🌀 <b>குளிகை</b></td><td><b>{res['kuli']}</b></td></tr>
-</table>
-""", unsafe_allow_html=True)
-
-# ---------- 1. App Settings & Premium Style ----------
-st.set_page_config(page_title="Tamil Panchangam Chart", layout="wide")
+# ---------- 1. ஆப் அமைப்புகள் & CSS ----------
+st.set_page_config(page_title="AstroGuide Tamil Panchangam", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #ffffff 0%, #fcf9f0 100%); }
+    h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
+    
     .header-style { 
         background: linear-gradient(135deg, #4A0000 0%, #8B0000 50%, #4A0000 100%);
         color: #FFD700 !important; text-align: center; padding: 20px; border-radius: 15px; 
         font-size: 1.8em; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         border: 2px solid #D4AF37; margin-bottom: 25px;
     }
-    .chart-container { display: flex; justify-content: center; align-items: center; padding: 10px; }
-    .rasi-chart { 
-        width: 620px; border-collapse: collapse; border: 5px solid #8B0000; 
-        background: #ffffff; table-layout: fixed; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    
+    .meroon-header { 
+        background-color: #8B0000; color: white !important; text-align: center; 
+        padding: 10px; border-radius: 5px; font-size: 1.1em; font-weight: bold; 
+        margin-top: 15px; margin-bottom: 10px;
     }
-    .rasi-chart td { 
-        border: 2px solid #D4AF37; height: 145px; vertical-align: top; padding: 12px; 
-        position: relative; background: #fff;
-    }
-    .planet-text { color: #1a1a1a; font-weight: 800; font-size: 1.05em; line-height: 1.4; }
+    
+    .panchang-table { width: 100%; border-collapse: collapse; background: white; border: 1.5px solid #8B0000; font-size: 0.9em; }
+    .panchang-table th { background-color: #8B0000; color: white !important; padding: 10px; text-align: center; }
+    .panchang-table td { padding: 10px; border: 1px solid #eee; font-weight: 500; }
+    .asubha-row { background-color: #FFF5F5; }
+
+    .rasi-chart { width: 620px; border-collapse: collapse; border: 5px solid #8B0000; background: white; table-layout: fixed; margin: auto; }
+    .rasi-chart td { border: 2px solid #D4AF37; height: 145px; vertical-align: top; padding: 12px; position: relative; }
+    .planet-text { color: #1a1a1a; font-weight: 800; font-size: 1em; line-height: 1.4; }
     .vakra-text { color: #D32F2F; font-size: 0.85em; }
-    .rasi-label { 
-        color: #8B0000; font-size: 0.7em; font-weight: bold; position: absolute; 
-        bottom: 5px; right: 8px; background: #fdf5e6; padding: 2px 5px; border-radius: 4px;
-    }
-    .center-info-box {
-        text-align: center; background: #FFFBF2; border: 2.5px double #D4AF37;
-        border-radius: 12px; padding: 12px;
-    }
-    .tamil-main { color: #8B0000; font-size: 1.2em; font-weight: bold; margin-bottom: 2px; }
-    .tamil-sub { color: #B22222; font-size: 1.1em; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #D4AF37; padding-bottom: 5px; }
-    .eng-dt { color: #333; font-size: 0.85em; font-weight: bold; }
-    .eng-tm { color: #D32F2F; font-size: 1em; font-weight: bold; margin-top: 3px; }
+    .rasi-label { color: #8B0000; font-size: 0.7em; font-weight: bold; position: absolute; bottom: 5px; right: 8px; background: #fdf5e6; padding: 2px 5px; border-radius: 4px; }
+    
+    .center-info-box { text-align: center; background: #FFFBF2; border: 2.5px double #D4AF37; border-radius: 12px; padding: 15px; }
+    .tamil-main { color: #8B0000; font-size: 1.2em; font-weight: bold; }
+    .tamil-sub { color: #B22222; font-size: 1.1em; font-weight: bold; border-bottom: 1px solid #D4AF37; padding-bottom: 5px; margin-bottom: 5px;}
+
     #MainMenu, footer, header {visibility: hidden;}
     .stDeployButton {display:none;}
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<div class='header-style'>🔱 ஸ்ரீ திருக்கணித நேரடி ராசி கட்டம் 🔱</div>", unsafe_allow_html=True)
+# ---------- 2. லாகின் ----------
+if "logged_in" not in st.session_state: st.session_state.logged_in = False
+if not st.session_state.logged_in:
+    st.markdown("<div class='header-style'>🔱 AstroGuide உள்நுழைவு</div>", unsafe_allow_html=True)
+    if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
+    st.stop()
 
-# ---------------- 2. Input ----------------
-current_now = datetime.now(IST)
-col1, col2, col3 = st.columns([1,2,1])
-with col2:
-    st.markdown("<div style='background: white; padding:10px; border-radius:10px; border: 1px solid #D4AF37; text-align:center;'>", unsafe_allow_html=True)
-    d_input = st.date_input("தேதி:", current_now.date())
-    t_input = st.time_input("நேரம் (Live):", current_now.time())
-    st.markdown("</div>", unsafe_allow_html=True)
+# ---------- 3. தேர்வுகள் ----------
+st.markdown("<div class='header-style'>🔱 ஸ்ரீ திருக்கணித பஞ்சாங்கம் & ராசி கட்டம்</div>", unsafe_allow_html=True)
+districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15]}
 
-# ---------------- 3. Logic ----------------
-def get_panchangam_details(jd_ut):
-    months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
-    years = ["பிரபவ", "விபவ", "சுக்ல", "பிரமோதூத", "பிரஜோத்பத்தி", "ஆங்கீரச", "ஸ்ரீமுக", "பவ", "யுவ", "தாது", "ஈஸ்வர", "வெகுதானிய", "பிரமாதி", "விக்ரம", "விஷு", "சித்ரபானu", "சுபானு", "தாரண", "பார்த்திப", "விய", "சர்வஜித்", "சர்வதாரி", "விரோதி", "விக்ருதி", "கர", "நந்தன", "விஜய", "ஜய", "மன்மத", "துன்முகி", "ஹேவிளம்பி", "விளம்பி", "விகாரி", "சார்வரி", "பிலவ", "சுபகிருது", "சோபகிருது", "குரோதி", "விசுவாசு", "பரபாவ", "பிளவங்க", "கீலக", "சௌமிய", "சாதாரண", "விரோதகிருது", "பரிதாபி", "பிரமாதீச", "ஆனந்த", "ராட்சச", "நள", "பிங்கள", "காளயுக்தி", "சித்தார்த்தி", "ரௌத்திரி", "துன்மதி", "துந்துபி", "ருத்ரோத்காரி", "ரக்தாட்சி", "குரோதன", "அட்சய"]
-    
-    # Sun pos
-    res, _ = swe.calc_ut(jd_ut, swe.SUN, swe.FLG_SIDEREAL)
-    sun_deg = res[0]
-    month_idx = int(sun_deg / 30)
-    
-    # Tamil Date Calculation (Degrees in current rasi + 1)
-    tamil_date = int(sun_deg % 30) + 1
-    
-    # Year Logic
-    base_idx = 37 # Krodhi for 2024-25
-    y_idx = (base_idx + (datetime.now().year - 2024)) % 60
-    
-    return f"{years[y_idx]} வருடம்", f"{months[month_idx]} {tamil_date}"
+col1, col2 = st.columns(2)
+with col1: s_dist = st.selectbox("ஊர்:", list(districts.keys()))
+with col2: s_date = st.date_input("தேதி:", datetime.now(IST))
+lat, lon = districts[s_dist]
 
-def get_full_chart(d, t):
-    dt = datetime.combine(d, t)
+# ---------- 4. பஞ்சாங்கக் கணக்கீடுகள் ----------
+def get_panchangam(date_obj, lat, lon):
     swe.set_sid_mode(swe.SIDM_LAHIRI)
-    utc_h = dt.hour + dt.minute/60.0 + dt.second/3600.0 - 5.5
-    jd_ut = swe.julday(dt.year, dt.month, dt.day, utc_h)
-
-    y_txt, m_txt = get_panchangam_details(jd_ut)
-    p_map = {swe.SUN: "சூரியன்", swe.MOON: "சந்திரன்", swe.MARS: "செவ்வாய்", swe.MERCURY: "புதன்", swe.JUPITER: "குரு", swe.VENUS: "சுக்கிரன்", swe.SATURN: "சனி", swe.MEAN_NODE: "ராகு"}
+    # சூரிய உதய நேரம் (Udaya Thithi-க்காக)
+    tf = TimezoneFinder(); tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
+    city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
+    s_info = sun(observer=city.observer, date=date_obj, tzinfo=pytz.timezone(tz_name))
+    sunrise = s_info["sunrise"]
     
+    # உதய நேரத்தின் Julian Day
+    jd_sunrise = swe.julday(sunrise.year, sunrise.month, sunrise.day, sunrise.hour + sunrise.minute/60.0 - 5.5)
+    
+    def get_raw(jd):
+        m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL)
+        s, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
+        thithi_val = ((m[0]-s[0])%360)/12
+        nak_val = m[0]/(360/27)
+        return int(thithi_val), int(nak_val), m[0], s[0]
+
+    t_idx, n_idx, m_deg, s_deg = get_raw(jd_sunrise)
+    
+    # தமிழ் வருடம் (ஏப்ரல் 14 மாற்றம்)
+    years_60 = ["பிரபவ", "விபவ", "சுக்ல", "பிரமோதூத", "பிரஜோத்பத்தி", "ஆங்கீரச", "ஸ்ரீமுக", "பவ", "யுவ", "தாது", "ஈஸ்வர", "வெகுதானிய", "பிரமாதி", "விக்ரம", "விஷு", "சித்ரபானு", "சுபானு", "தாரண", "பார்த்திப", "விய", "சர்வஜித்", "சர்வதாரி", "விரோதி", "விக்ருதி", "கர", "நந்தன", "விஜய", "ஜய", "மன்மத", "துன்முகி", "ஹேவிளம்பி", "விளம்பி", "விகாரி", "சார்வரி", "பிலவ", "சுபகிருது", "சோபகிருது", "குரோதி", "விசுவாசு", "பராபவ", "பிளவங்க", "கீலக", "சௌமிய", "சாதாரண", "விரோதகிருது", "பரிதாபி", "பிரமாதீச", "ஆனந்த", "ராட்சச", "நள", "பிங்கள", "காளயுக்தி", "சித்தார்த்தி", "ரௌத்திரி", "துன்மதி", "துந்துபி", "ருத்ரோத்காரி", "ரக்தாட்சி", "குரோதன", "அட்சய"]
+    y_idx = (date_obj.year - 1987) % 60
+    if (date_obj.month < 4) or (date_obj.month == 4 and date_obj.day < 14): y_idx -= 1
+    
+    months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
+    tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
+    naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
+
+    # ராசி கட்டம்
+    p_map = {0: "சூரியன்", 1: "சந்திரன்", 2: "செவ்வாய்", 3: "புதன்", 4: "குரு", 5: "சுக்கிரன்", 6: "சனி", 10: "ராகு"}
     res_pos = {}
     for pid, name in p_map.items():
-        res, _ = swe.calc_ut(jd_ut, pid, swe.FLG_SIDEREAL)
-        deg = res[0]
-        vakra = " <span class='vakra-text'>(வ)</span>" if res[3] < 0 else ""
-        idx = int(deg / 30)
-        p_str = f"<div class='planet-text'>{name}{vakra} {int(deg%30)}°</div>"
+        pos, _ = swe.calc_ut(jd_sunrise, pid, swe.FLG_SIDEREAL)
+        deg = pos[0]; idx = int(deg / 30)
+        v = " <span class='vakra-text'>(வ)</span>" if pos[3] < 0 else ""
+        p_s = f"<div class='planet-text'>{name}{v} {int(deg%30)}°</div>"
         if idx not in res_pos: res_pos[idx] = []
-        res_pos[idx].append(p_str)
-        if pid == swe.MEAN_NODE:
-            k_idx = (idx + 6) % 12
-            if k_idx not in res_pos: res_pos[k_idx] = []
-            res_pos[k_idx].append(f"<div class='planet-text'>கேது {int(deg%30)}°</div>")
-            
-    return res_pos, dt.strftime("%d-%m-%Y"), dt.strftime("%I:%M %p"), y_txt, m_txt
+        res_pos[idx].append(p_s)
+        if pid == 10:
+            ki = (idx + 6) % 12
+            if ki not in res_pos: res_pos[ki] = []
+            res_pos[ki].append(f"<div class='planet-text'>கேது {int(deg%30)}°</div>")
 
-chart_data, f_date, f_time, y_info, m_info = get_full_chart(d_input, t_input)
+    return {
+        "y": years_60[y_idx % 60], "m": months[int(s_deg/30)%12], "d": int(s_deg%30)+1,
+        "tithi": tithis[t_idx % 30], "nak": naks[n_idx % 27], "n_idx": n_idx % 27,
+        "rise": sunrise.strftime("%I:%M %p"), "set": s_info["sunset"].strftime("%I:%M %p"),
+        "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()],
+        "rahu": ["10:30-12:00", "09:00-10:30", "12:00-13:30", "13:30-15:00", "15:00-16:30", "09:00-10:30", "16:30-18:00"][date_obj.weekday()],
+        "yema": ["07:30-09:00", "09:00-10:30", "10:30-12:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][date_obj.weekday()],
+        "chart": res_pos
+    }
 
-# ---------------- 4. Render ----------------
+res = get_panchangam(s_date, lat, lon)
+
+# ---------- 5. காட்சி அமைப்பு ----------
+st.markdown(f"""
+<table class="panchang-table">
+    <tr><th colspan="2">பஞ்சாங்கம் - {s_dist} ({res['wara']})</th></tr>
+    <tr><td>📅 தமிழ் தேதி</td><td><b>{res['y']} வருடம், {res['m']} {res['d']}</b></td></tr>
+    <tr><td>🌅 உதய திதி</td><td><b>{res['tithi']}</b></td></tr>
+    <tr><td>⭐ நட்சத்திரம்</td><td><b>{res['nak']}</b></td></tr>
+    <tr><td>☀️ உதயம் / அஸ்தமனம்</td><td>{res['rise']} / {res['set']}</td></tr>
+</table>
+<div class='meroon-header'>⏳ அசுப நேரங்கள்</div>
+<table class="panchang-table">
+    <tr class="asubha-row"><td>🌑 ராகு காலம்</td><td><b>{res['rahu']}</b></td></tr>
+    <tr class="asubha-row"><td>🔥 எமகண்டம்</td><td><b>{res['yema']}</b></td></tr>
+</table>
+""", unsafe_allow_html=True)
+
+
+
 def draw_box(i):
-    planets = "".join(chart_data.get(i, []))
+    planets = "".join(res['chart'].get(i, []))
     rasi_names = ["மேஷம்", "ரிஷபம்", "மிதுனம்", "கடகம்", "சிம்மம்", "கன்னி", "துலாம்", "விருச்சிகம்", "தனுசு", "மகரம்", "கும்பம்", "மீனம்"]
     return f"{planets}<span class='rasi-label'>{rasi_names[i]}</span>"
 
@@ -272,35 +148,21 @@ st.markdown(f"""
 <div class="chart-container">
     <table class="rasi-chart">
         <tr><td>{draw_box(11)}</td><td>{draw_box(0)}</td><td>{draw_box(1)}</td><td>{draw_box(2)}</td></tr>
-        <tr>
-            <td>{draw_box(10)}</td>
+        <tr><td>{draw_box(10)}</td>
             <td colspan="2" rowspan="2" style="vertical-align:middle;">
                 <div class="center-info-box">
-                    <div class="tamil-main">{y_info}</div>
-                    <div class="tamil-sub">{m_info}</div>
-                    <div class="eng-dt">{f_date}</div>
-                    <div class="eng-tm">{f_time}</div>
-                    <div style="font-size:0.6em; color:#777; margin-top:5px;">திருக்கணித முறை (IST)</div>
+                    <div class="tamil-main">{res['y']} வருடம்</div>
+                    <div class="tamil-sub">{res['m']} {res['d']}</div>
+                    <div style="font-size:0.8em; color:#333;">{s_date.strftime('%d-%m-%Y')}</div>
                 </div>
             </td>
-            <td>{draw_box(3)}</td>
-        </tr>
+            <td>{draw_box(3)}</td></tr>
         <tr><td>{draw_box(9)}</td><td>{draw_box(4)}</td></tr>
         <tr><td>{draw_box(8)}</td><td>{draw_box(7)}</td><td>{draw_box(6)}</td><td>{draw_box(5)}</td></tr>
     </table>
 </div>
 """, unsafe_allow_html=True)
-# ---------------- 8. சந்திராஷ்டமம் ----------------
-st.markdown("<div class='meroon-header'>🌙 இன்றைய சந்திராஷ்டமம்</div>", unsafe_allow_html=True)
+
+# சந்திராஷ்டமம்
 naks_list = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
-try:
-    c_idx = naks_list.index(res['nak'])
-    st.markdown(f"""
-    <table class="panchang-table">
-        <tr style="background:#FFF5F5;"><td>⚠️ <b>சந்திராஷ்டமம்</b></td><td><b style="color:red;">{naks_list[(c_idx-16)%27]}</b> ({res['n_e']} வரை)</td></tr>
-        <tr><td>🕒 <b>அடுத்து</b></td><td><b>{naks_list[(c_idx-15)%27]}</b> ({res['n_e']} முதல்)</td></tr>
-    </table>
-    """, unsafe_allow_html=True)
-except: pass
-
-
+st.markdown(f"<div class='meroon-header'>🌙 இன்றைய சந்திராஷ்டமம்: <b style='color:yellow;'>{naks_list[(res['n_idx']-16)%27]}</b></div>", unsafe_allow_html=True)
