@@ -6,7 +6,7 @@ from astral import LocationInfo
 from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
-# ---------- 1. ஆப் அமைப்புகள் & CSS ----------
+# ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
 st.set_page_config(page_title="AstroGuide Tamil", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
@@ -16,23 +16,38 @@ st.markdown("""
     h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
     .header-style { color: #8B0000 !important; text-align: center; font-weight: bold; margin-top: -30px; margin-bottom: 5px; font-size: 1.1em; }
     .main-box { max-width: 450px; margin: auto; padding: 10px; background: #fdfdfd; border-radius: 8px; border: 1px solid #8B0000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 10px; }
+    
+    /* மெரூன் தலைப்பு மற்றும் வெள்ளை எழுத்துக்கள் */
+    .meroon-header { 
+        background-color: #8B0000; 
+        color: white !important; 
+        text-align: center; 
+        padding: 10px; 
+        border-radius: 5px; 
+        font-size: 1em; 
+        font-weight: bold; 
+        margin-top: 15px; 
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
     .panchang-table { width: 100%; border-collapse: collapse; background: white; border-radius: 5px; border: 1px solid #8B0000; font-size: 0.78em; }
     .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; }
     .panchang-table td { padding: 5px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
     .next-info { color: #8B0000 !important; font-size: 0.7em; font-style: italic; display: block; margin-top: 1px; }
-    .muhurtham-box { color: #2E7D32 !important; font-weight: bold; }
     .asubha-row { background-color: #FFF5F5; }
     .vrat-table { width:100%; border:1px solid #8B0000; border-radius:10px; background-color:#FFFAF0; margin-bottom:10px; border-collapse: separate; }
     </style>
     """, unsafe_allow_html=True)
 
-# ---------- 2. லாகின் & ஊர் தேர்வுகள் ----------
+# ---------------- 2. லாகின் பகுதி ----------------
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if not st.session_state.logged_in:
     st.markdown("<h1 class='header-style'>🔱 AstroGuide உள்நுழைவு</h1>", unsafe_allow_html=True)
     if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
     st.stop()
 
+# ---------------- 3. மாவட்டங்கள் & தேர்வுகள் ----------------
 districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15]}
 
 st.markdown("<h1 class='header-style'>🔱 AstroGuide திருக்கணிதப் பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
@@ -44,7 +59,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 lat, lon = districts[s_dist]
 
-# ---------- 3. பஞ்சாங்க லாஜிக் ----------
+# ---------------- 4. பஞ்சாங்க லாஜிக் ----------------
 def get_full_panchang_tamil(date_obj, lat, lon):
     tf = TimezoneFinder(); tz_name = tf.timezone_at(lat=lat, lng=lon) or "Asia/Kolkata"
     city = LocationInfo(latitude=lat, longitude=lon, timezone=tz_name)
@@ -58,24 +73,21 @@ def get_full_panchang_tamil(date_obj, lat, lon):
         m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL); s_p, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
         t = ((m[0]-s_p[0])%360)/12
         n = m[0]/(360/27)
-        y = (m[0]+s_p[0])/(360/27)
-        k = ((m[0]-s_p[0])%360)/6
-        return m[0], s_p[0], int(t), int(n), int(y % 27), int(k)
+        return m[0], s_p[0], int(t), int(n)
 
     def find_end_time(jd_base, cur_idx, p_type):
         low, high = 0.0, 1.3
         for _ in range(35):
             mid_v = (low + high) / 2
             res_val = get_raw(jd_base + mid_v)
-            lookup = {"t":2, "n":3, "y":4, "k":5}[p_type]
+            lookup = {"t":2, "n":3}[p_type]
             if res_val[lookup] == cur_idx: low = mid_v
             else: high = mid_v
         dt = datetime.combine(date_obj, datetime.min.time()) + timedelta(hours=5.5) + timedelta(days=low)
         day_str = "இன்று" if dt.date() == date_obj else "நாளை"
         return f"{day_str} {dt.strftime('%I:%M %p')}"
 
-    m_deg, s_deg, t_n, n_n, y_n, k_n = get_raw(jd_ut)
-    
+    m_deg, s_deg, t_n, n_n = get_raw(jd_ut)
     tithis = ["பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "பௌர்ணமி", "பிரதமை", "துவிதியை", "திருதியை", "சதுர்த்தி", "பஞ்சமி", "சஷ்டி", "சப்தமி", "அஷ்டமி", "நவமி", "தசமி", "ஏகாதசி", "துவாதசி", "திரயோதசி", "சதுர்த்தசி", "அமாவாசை"]
     naks = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
     
@@ -86,81 +98,63 @@ def get_full_panchang_tamil(date_obj, lat, lon):
     return {
         "tamil_date": f"{months[int(s_deg/30)%12]} {int(s_deg%30)+1}",
         "wara": wara, "rise": s["sunrise"].strftime("%I:%M %p"), "set": s["sunset"].strftime("%I:%M %p"),
-        "abhijit": f"{(mid - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid + timedelta(minutes=24)).strftime('%I:%M %p')}",
-        "tithi": tithis[t_n % 30], "t_e": find_end_time(jd_ut, t_n, "t"), "t_nx": tithis[(t_n+1)%30],
+        "tithi": tithis[t_n % 30], "t_e": find_end_time(jd_ut, t_n, "t"),
         "nak": naks[n_n % 27], "n_e": find_end_time(jd_ut, n_n, "n"), "n_nx": naks[(n_n+1)%27],
         "rahu": ["07:30-09:00", "15:00-16:30", "12:00-13:30", "13:30-15:00", "10:30-12:00", "09:00-10:30", "16:30-18:00"][d_idx],
         "yema": ["10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][d_idx],
-        "kuli": ["13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30"][d_idx],
         "gowri": ["01:30-02:30 PM", "10:30-11:30 AM", "09:30-10:30 AM", "01:30-02:30 PM", "12:30-01:30 PM", "09:30-10:30 AM", "10:30-11:30 AM"][d_idx],
-        "shoolam": ["கிழக்கு", "வடக்கு", "வடக்கு", "தெற்கு", "மேற்கு", "கிழக்கு", "மேற்கு"][d_idx],
-        "moon_deg": round(m_deg, 2), "month_name": months[int(s_deg/30)%12]
+        "month_name": months[int(s_deg/30)%12]
     }
 
 res = get_full_panchang_tamil(s_date, lat, lon)
 
-# ---------- 4. பஞ்சாங்க அட்டவணை காட்சிப்படுத்துதல் ----------
+# --- பஞ்சாங்க அட்டவணை காட்சி ---
 st.markdown(f"""
 <table class="panchang-table">
     <tr><th colspan="2">AstroGuide - {s_dist} ({res['wara']})</th></tr>
     <tr><td>📅 <b>தமிழ் தேதி</b></td><td>{res['tamil_date']}</td></tr>
     <tr><td>🌅 <b>உதயம் / அஸ்தமனம்</b></td><td>{res['rise']} / {res['set']}</td></tr>
-    <tr><td>✨ <b>அபிஜித் முகூர்த்தம்</b></td><td><span class='muhurtham-box'>{res['abhijit']}</span></td></tr>
-    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> வரை ({res['t_e']})<br><span class='next-info'>அடுத்து: {res['t_nx']}</span></td></tr>
-    <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{res['nak']}</b> வரை ({res['n_e']})<br><span class='next-info'>அடுத்து: {res['n_nx']}</span></td></tr>
+    <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> வரை ({res['t_e']})</td></tr>
+    <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{res['nak']}</b> வரை ({res['n_e']})</td></tr>
     <tr><td>🌟 <b>கௌரி நல்ல நேரம்</b></td><td>{res['gowri']}</td></tr>
     <tr class="asubha-row"><td>🚫 <b>ராகு காலம்</b></td><td>{res['rahu']}</td></tr>
     <tr class="asubha-row"><td>🚫 <b>எமகண்டம்</b></td><td>{res['yema']}</td></tr>
-    <tr class="asubha-row"><td>🚫 <b>குளிகை</b></td><td>{res['kuli']}</td></tr>
-    <tr><td>📍 <b>சூலம்</b></td><td>{res['shoolam']}</td></tr>
-    <tr><td>📊 <b>சந்திர பாகை</b></td><td>{res['moon_deg']}° (திருக்கணிதம்)</td></tr>
 </table>
 """, unsafe_allow_html=True)
 
-# ---------- 5. சந்திராஷ்டம அட்டவணை ----------
-st.markdown("<br>", unsafe_allow_html=True)
+# ---------------- 5. சந்திராஷ்டம அட்டவணை (மெரூன் தலைப்புடன்) ----------------
+st.markdown("<div class='meroon-header'>🌙 இன்றைய சந்திராஷ்டமம்</div>", unsafe_allow_html=True)
 naks_list = ["அஸ்வினி", "பரணி", "கார்த்திகை", "ரோகிணி", "மிருகசீரிடம்", "திருவாதிரை", "புனர்பூசம்", "பூசம்", "ஆயில்யம்", "மகம்", "பூரம்", "உத்திரம்", "அஸ்தம்", "சித்திரை", "சுவாதி", "விசாகம்", "அனுஷம்", "கேட்டை", "மூலம்", "பூராடம்", "உத்திராடம்", "திருவோணம்", "அவிட்டம்", "சதயம்", "பூரட்டாதி", "உத்திரட்டாதி", "ரேவதி"]
 
 try:
-    current_nak_idx = naks_list.index(res['nak'])
-    next_nak_idx = (current_nak_idx + 1) % 27
-    cur_aff_idx = (current_nak_idx - 16) % 27
-    nxt_aff_idx = (next_nak_idx - 16) % 27
-
+    c_idx = naks_list.index(res['nak'])
+    cur_aff = (c_idx - 16) % 27
+    nxt_aff = (c_idx - 15) % 27
     st.markdown(f"""
     <table class="panchang-table">
-        <tr><th colspan="2">🌙 சந்திராஷ்டம விவரங்கள்</th></tr>
-        <tr>
-            <td>🚩 <b>தற்போதைய நிலை</b><br>({res['nak']})</td>
-            <td><b style="color: #d32f2f;">{naks_list[cur_aff_idx]}</b> நட்சத்திரத்திற்கு<br>
-            <span class='next-info'>{res['n_e']} வரை</span></td>
-        </tr>
-        <tr class="asubha-row">
-            <td>🕒 <b>அடுத்த நிலை</b><br>({res['n_nx']})</td>
-            <td><b style="color: #8B0000;">{naks_list[nxt_aff_idx]}</b> நட்சத்திரத்திற்கு<br>
-            <span class='next-info'>{res['n_e']} முதல் தொடங்குகிறது</span></td>
-        </tr>
+        <tr><td>🚩 <b>தற்போதைய நிலை ({res['nak']})</b></td><td><b style="color:red;">{naks_list[cur_aff]}</b> நட்சத்திரத்திற்கு ({res['n_e']} வரை)</td></tr>
+        <tr class="asubha-row"><td>🕒 <b>அடுத்த நிலை ({res['n_nx']})</b></td><td><b>{naks_list[nxt_aff]}</b> நட்சத்திரத்திற்கு ({res['n_e']} முதல்)</td></tr>
     </table>
     """, unsafe_allow_html=True)
 except: pass
 
-# ---------- 6. விரதங்கள் & விசேஷங்கள் அட்டவணை ----------
-st.markdown("<br><h3 style='text-align: center; color: #8B0000;'>🪷 இன்றைய விரதங்கள் & விசேஷங்கள்</h3>", unsafe_allow_html=True)
+# ---------------- 6. விரதங்கள் & விசேஷங்கள் (மெரூன் தலைப்பு & டைனமிக் லாஜிக்) ----------------
+st.markdown("<div class='meroon-header'>🪷 இன்றைய விரதங்கள் & விசேஷங்கள்</div>", unsafe_allow_html=True)
 
-# விசேஷ தரவுகள்: (திதி, நட்சத்திரம், மாதம்): [பெயர், பலன், படம்]
 vrat_db = {
-    ("அமாவாசை", None, "மார்கழி"): ["ஸ்ரீ ஹனுமன் ஜெயந்தி", "பயங்கள் நீங்கும், அஞ்சனை மைந்தனின் பூரண அருள் கிட்டும்.", "https://img.freepik.com/premium-photo/god-lord-hanuman-statue_1156453-157.jpg"],
-    ("அமாவாசை", None, None): ["அமாவாசை", "முன்னோர்களின் ஆசி கிட்டும், குடும்பத்தில் சுபிட்சம் உண்டாகும்.", "https://img.freepik.com/premium-photo/hindu-ritual-called-tharpanam-ancestor-worship_1029679-65039.jpg"],
-    ("பௌர்ணமி", None, None): ["பௌர்ணமி", "மன அமைதி மற்றும் செல்வச் செழிப்பு உண்டாகும்.", "https://img.freepik.com/free-photo/view-bright-full-moon-night-sky_23-2151000305.jpg"],
-    ("சதுர்த்தி", None, None): ["சங்கடஹர சதுர்த்தி", "காரியத் தடைகள் விலகும், விக்ன விநாயகர் அருள் கிட்டும்.", "https://img.freepik.com/premium-photo/ganesha-god-success_662214-41154.jpg"],
-    ("சஷ்டி", None, None): ["சஷ்டி விரதம்", "முருகனின் அருள் மற்றும் குழந்தை பாக்கியம் கிட்டும்.", "https://img.freepik.com/premium-photo/lord-murugan-statue-temple_950133-1463.jpg"]
+    # (திதி, நட்சத்திரம், மாதம்): [பெயர், பலன், படம்]
+    ("அமாவாசை", None, "மார்கழி"): ["ஸ்ரீ ஹனுமன் ஜெயந்தி", "அஞ்சனை மைந்தனின் பூரண அருள் கிட்டும், பயம் நீங்கும்.", "https://img.freepik.com/premium-photo/god-lord-hanuman-statue_1156453-157.jpg"],
+    ("அமாவாசை", None, None): ["அமாவாசை தர்ப்பணம்", "முன்னோர்களின் ஆசி கிட்டும், குடும்பத்தில் சுபிட்சம் உண்டாகும்.", "https://img.freepik.com/premium-photo/hindu-ritual-called-tharpanam-ancestor-worship_1029679-65039.jpg"],
+    ("பௌர்ணமி", None, None): ["பௌர்ணமி விரதம்", "மன அமைதி மற்றும் செல்வச் செழிப்பு உண்டாகும்.", "https://img.freepik.com/free-photo/view-bright-full-moon-night-sky_23-2151000305.jpg"],
+    ("சதுர்த்தி", None, None): ["சங்கடஹர சதுர்த்தி", "காரியத் தடைகள் விலகும், எடுத்த காரியங்கள் சித்திக்கும்.", "https://img.freepik.com/premium-photo/ganesha-god-success_662214-41154.jpg"],
+    ("சஷ்டி", None, None): ["சஷ்டி விரதம்", "முருகப் பெருமானின் அருளும் குழந்தை பாக்கியமும் கிட்டும்.", "https://img.freepik.com/premium-photo/lord-murugan-statue-temple_950133-1463.jpg"],
+    ("ஏகாதசி", None, None): ["ஏகாதசி விரதம்", "மகாவிஷ்ணுவின் அருள் கிடைக்கும், மோட்சம் கிட்டும்.", "https://img.freepik.com/premium-photo/god-vishnu-shiva-statue_950133-1188.jpg"]
 }
 
 found_vrat = False
 st.markdown('<div class="main-box">', unsafe_allow_html=True)
 
 for (t, n, m), d in vrat_db.items():
-    # கண்டிஷன் செக்கிங்
     t_match = (t == res['tithi'])
     n_match = (n is None or n == res['nak'])
     m_match = (m is None or m == res['month_name'])
@@ -171,7 +165,7 @@ for (t, n, m), d in vrat_db.items():
         <table class="vrat-table">
             <tr>
                 <td style="width:35%; text-align:center; padding:10px;">
-                    <img src="{d[2]}" style="width:110px; height:110px; border-radius:50%; border:2px solid #8B0000; object-fit: cover;">
+                    <img src="{d[2]}" style="width:110px; height:110px; border-radius:50%; border:3px solid #8B0000; object-fit: cover;">
                 </td>
                 <td style="padding:10px; vertical-align:middle;">
                     <b style="color:#8B0000; font-size:1.1em;">✨ {d[0]}</b><br>
@@ -182,6 +176,6 @@ for (t, n, m), d in vrat_db.items():
         """, unsafe_allow_html=True)
 
 if not found_vrat:
-    st.info("இன்று குறிப்பிடத்தக்க விசேஷங்கள் ஏதுமில்லை.")
+    st.info("இன்று குறிப்பிட்ட விசேஷங்கள் அல்லது விரதங்கள் ஏதுமில்லை.")
 
 st.markdown('</div>', unsafe_allow_html=True)
