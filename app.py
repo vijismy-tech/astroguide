@@ -7,7 +7,7 @@ from astral.sun import sun
 from timezonefinder import TimezoneFinder
 
 # ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
-st.set_page_config(page_title="AstroGuide Tamil Pro Full", layout="wide")
+st.set_page_config(page_title="AstroGuide Tamil Pro Plus", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
 
 st.markdown("""
@@ -53,7 +53,7 @@ st.markdown("""
 # ---------- 2. லாகின் ----------
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if not st.session_state.logged_in:
-    st.markdown("<div class='header-style'>🔱 AstroGuide Pro உள்நுழைவு</div>", unsafe_allow_html=True)
+    st.markdown("<div class='header-style'>🔱 AstroGuide Pro Plus உள்நுழைவு</div>", unsafe_allow_html=True)
     if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
     st.stop()
 
@@ -81,12 +81,14 @@ def get_panchangam_engine(date_obj, time_obj, lat, lon):
     sunrise, sunset = s_info["sunrise"], s_info["sunset"]
     mid_day = sunrise + (sunset - sunrise) / 2
     
+    # Accurate Julian Days
+    # IST to UTC Adjustment (-5.5h)
     jd_sunrise = swe.julday(sunrise.year, sunrise.month, sunrise.day, sunrise.hour + sunrise.minute/60.0 - 5.5)
     jd_current = swe.julday(dt_combined.year, dt_combined.month, dt_combined.day, (dt_combined.hour + dt_combined.minute/60.0 - 5.5))
 
     def get_raw(jd):
-        m, _ = swe.calc_ut(jd, 1, swe.FLG_SIDEREAL)
-        s, _ = swe.calc_ut(jd, 0, swe.FLG_SIDEREAL)
+        m, _ = swe.calc_ut(jd, swe.MOON, swe.FLG_SIDEREAL)
+        s, _ = swe.calc_ut(jd, swe.SUN, swe.FLG_SIDEREAL)
         thithi = ((m[0]-s[0])%360)/12
         nak = m[0]/(360/27)
         yoga = ((m[0]+s[0])%360)/(360/27)
@@ -113,13 +115,9 @@ def get_panchangam_engine(date_obj, time_obj, lat, lon):
     karans = ["பவம்", "பாலவம்", "கௌலவம்", "சைதுலை", "கரசை", "வணிசை", "பத்திரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்கினம்"]
     months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
     
-    # பட்சம் விவரம்
     paksham = "வளர்பிறை (சுக்ல பட்சம்)" if t_idx < 15 else "தேய்பிறை (கிருஷ்ண பட்சம்)"
-    
-    # தானியங்கி வருடம்
     y_name = "விசுவாசு" if (date_obj.year > 2025 or (date_obj.year == 2025 and date_obj.month >= 4 and date_obj.day >= 14)) else "குரோதி"
 
-    # சுப மற்றும் கௌரி நல்ல நேரங்கள்
     weekday = date_obj.weekday()
     subha_hours = {0: "06:00-07:30 AM", 1: "07:30-09:00 AM", 2: "09:00-10:30 AM", 3: "10:30-12:00 PM", 4: "12:00-01:30 PM", 5: "07:30-09:00 AM", 6: "06:00-07:30 AM"}
     gowri_hours = {
@@ -129,18 +127,18 @@ def get_panchangam_engine(date_obj, time_obj, lat, lon):
         6: "10:30-11:30 AM, 01:30-02:30 PM"
     }
 
-    # ராசி கட்டம் கணக்கீடு
-    p_map = {0: "சூரியன்", 1: "சந்திரன்", 2: "செவ்வாய்", 3: "புதன்", 4: "குரு", 5: "சுக்கிரன்", 6: "சனி", 10: "ராகு"}
+    # ராசி கட்டம் கணக்கீடு (Correct IDs: Jupiter=4, Venus=5)
+    planet_ids = {swe.SUN: "சூரியன்", swe.MOON: "சந்திரன்", swe.MARS: "செவ்வாய்", swe.MERCURY: "புதன்", swe.JUPITER: "குரு", swe.VENUS: "சுக்கிரன்", swe.SATURN: "சனி", swe.MEAN_NODE: "ராகு"}
     res_pos = {}
-    for pid, name in p_map.items():
+    for pid, name in planet_ids.items():
         pos, _ = swe.calc_ut(jd_current, pid, swe.FLG_SIDEREAL)
-        idx = int(pos[0]/30); v = " <span class='vakra-text'>(வ)</span>" if pos[3] < 0 else ""
+        deg = pos[0]; idx = int(deg / 30); v = " <span class='vakra-text'>(வ)</span>" if pos[3] < 0 else ""
         if idx not in res_pos: res_pos[idx] = []
-        res_pos[idx].append(f"<div class='planet-text'>{name}{v} {int(pos[0]%30)}°</div>")
-        if pid == 10:
+        res_pos[idx].append(f"<div class='planet-text'>{name}{v} {int(deg%30)}°</div>")
+        if pid == swe.MEAN_NODE:
             ki = (idx + 6) % 12
             if ki not in res_pos: res_pos[ki] = []
-            res_pos[ki].append(f"<div class='planet-text'>கேது {int(pos[0]%30)}°</div>")
+            res_pos[ki].append(f"<div class='planet-text'>கேது {int(deg%30)}°</div>")
 
     return {
         "y": y_name, "m": months[int(s_deg/30)%12], "d": int(s_deg%30)+1,
@@ -199,6 +197,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ராசி கட்டம்
+
 st.markdown("<div class='meroon-header'>🎡 ஸ்ரீ திருக்கணித நேரடி ராசி கட்டம்</div>", unsafe_allow_html=True)
 def draw_box(i):
     planets = "".join(res['chart'].get(i, []))
