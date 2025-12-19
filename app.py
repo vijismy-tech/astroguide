@@ -12,6 +12,22 @@ IST = pytz.timezone('Asia/Kolkata')
 
 st.markdown("""
     <style>
+# ---------- 1. ஆப் அமைப்புகள் & CSS வடிவமைப்பு ----------
+st.set_page_config(page_title="AstroGuide Tamil", layout="wide")
+
+st.markdown("""
+    <style>
+    /* ஏற்கனவே இருக்கும் உங்கள் கோடிங் இங்கே இருக்கும்... */
+    .stApp { background-color: #FFFFFF; }
+    
+    /* இதோ இங்கே தான் அந்தப் புதிய வரிகளைச் சேர்க்க வேண்டும்: */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display:none;}
+    
+    </style>
+    """, unsafe_allow_html=True)
     .stApp { background-color: #FFFFFF; }
     h1, h2, h3, p, span, div, label, td, th { color: #1a1a1a !important; font-family: 'Arial', sans-serif; }
     .header-style { color: #8B0000 !important; text-align: center; font-weight: bold; margin-top: -30px; margin-bottom: 5px; font-size: 1.1em; }
