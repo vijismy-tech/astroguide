@@ -1,3 +1,11 @@
+import streamlit as st
+import swisseph as swe
+from datetime import datetime, timedelta
+import pytz
+from astral import LocationInfo
+from astral.sun import sun
+from timezonefinder import TimezoneFinder
+
 # ---------- 1. ஆப் அமைப்புகள் & நவீன CSS வடிவமைப்பு ----------
 st.set_page_config(page_title="AstroGuide திருக்கணிதப் பஞ்சாங்கம்", layout="wide")
 IST = pytz.timezone('Asia/Kolkata')
