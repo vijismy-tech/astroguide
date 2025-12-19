@@ -32,7 +32,8 @@ st.markdown("""
     .panchang-table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #8B0000; font-size: 0.78em; }
     .panchang-table th { background-color: #8B0000; color: white !important; padding: 6px; text-align: center; }
     .panchang-table td { padding: 5px 8px; border: 1px solid #eee; color: #000 !important; font-weight: 500; }
-    
+    .next-info { color: #8B0000 !important; font-size: 0.85em; font-style: italic; display: block; margin-top: 2px; }
+
     .rasi-chart { width: 100%; border-collapse: collapse; border: 2px solid #8B0000; table-layout: fixed; }
     .rasi-chart td { border: 1px solid #8B0000; height: 95px; vertical-align: top; padding: 4px; font-size: 0.65em; background: #fff; }
     .rasi-label { color: #8B0000; font-weight: bold; display: block; border-bottom: 1px solid #eee; margin-bottom: 2px; }
@@ -43,14 +44,14 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# ---------------- 2. லாகின் பகுதி ----------------
+# ---------------- 2. லாகின் ----------------
 if "logged_in" not in st.session_state: st.session_state.logged_in = False
 if not st.session_state.logged_in:
     st.markdown("<h1 class='header-style'>🔱 AstroGuide உள்நுழைவு</h1>", unsafe_allow_html=True)
     if st.button("உள்ளே செல்க"): st.session_state.logged_in = True; st.rerun()
     st.stop()
 
-# ---------------- 3. ஊர் & தேதி தேர்வுகள் ----------------
+# ---------------- 3. தேர்வுகள் ----------------
 districts = {"சென்னை": [13.08, 80.27], "மதுரை": [9.93, 78.12], "திருச்சி": [10.79, 78.70], "கோவை": [11.02, 76.96], "நெல்லை": [8.71, 77.76], "சேலம்": [11.66, 78.15]}
 st.markdown("<h1 class='header-style'>🔱 AstroGuide பஞ்சாங்கம்</h1>", unsafe_allow_html=True)
 st.markdown('<div class="main-box">', unsafe_allow_html=True)
@@ -101,14 +102,12 @@ def get_all_astro_data(date_obj, lat, lon):
     transit = {}
     for pid, name in planet_ids.items():
         pos, _ = swe.calc_ut(jd_ut, pid, swe.FLG_SIDEREAL)
-        deg = pos[0]
-        idx = int(deg / 30)
+        deg = pos[0]; idx = int(deg / 30)
         p_val = f"{name} {round(deg % 30, 2)}°"
         if idx not in transit: transit[idx] = []
         transit[idx].append(p_val)
         if pid == 10: # கேது
-            k_deg = (deg + 180) % 360
-            k_idx = int(k_deg / 30)
+            k_deg = (deg + 180) % 360; k_idx = int(k_deg / 30)
             if k_idx not in transit: transit[k_idx] = []
             transit[k_idx].append(f"கேது {round(k_deg % 30, 2)}°")
 
@@ -116,10 +115,10 @@ def get_all_astro_data(date_obj, lat, lon):
         "tamil_date": f"{months[int(s_deg/30)%12]} {int(s_deg%30)+1}",
         "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][date_obj.weekday()],
         "rise": s["sunrise"].strftime("%I:%M %p"), "set": s["sunset"].strftime("%I:%M %p"),
-        "abhijit": f"{(mid - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid + timedelta(minutes=24)).strftime('%I:%M %p')}",
         "tithi": tithis[t_n % 30], "t_e": find_end_time(jd_ut, t_n, "t"), "t_nx": tithis[(t_n+1)%30],
         "nak": naks[n_n % 27], "n_e": find_end_time(jd_ut, n_n, "n"), "n_nx": naks[(n_n+1)%27],
         "yoga": yogas[y_n % 27], "karan": karans[k_n % 11],
+        "abhijit": f"{(mid - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid + timedelta(minutes=24)).strftime('%I:%M %p')}",
         "rahu": ["07:30-09:00", "15:00-16:30", "12:00-13:30", "13:30-15:00", "10:30-12:00", "09:00-10:30", "16:30-18:00"][date_obj.weekday()],
         "yema": ["10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][date_obj.weekday()],
         "kuli": ["13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30"][date_obj.weekday()],
@@ -137,7 +136,13 @@ st.markdown(f"""
     <tr><td>📅 <b>தமிழ் தேதி</b></td><td><b>{res['tamil_date']}</b></td></tr>
     <tr><td>🌅 <b>சூரிய உதயம் / அஸ்தமனம்</b></td><td><b>{res['rise']}</b> / {res['set']}</td></tr>
     <tr><td>🌙 <b>திதி</b></td><td><b>{res['tithi']}</b> வரை ({res['t_e']})</td></tr>
-    <tr><td>⭐ <b>நட்சத்திரம்</b></td><td><b>{res['nak']}</b> வரை ({res['n_e']})</td></tr>
+    <tr>
+        <td>⭐ <b>நட்சத்திரம்</b></td>
+        <td>
+            <b>{res['nak']}</b> ({res['n_e']} வரை)<br>
+            <span class='next-info'>அடுத்து: <b>{res['n_nx']}</b></span>
+        </td>
+    </tr>
     <tr><td>🌀 <b>யோகம் / கரணம்</b></td><td>{res['yoga']} / {res['karan']}</td></tr>
     <tr><td>📍 <b>சூலம்</b></td><td>{res['shoolam']}</td></tr>
     <tr style="background:#f0f7ff;"><td>📊 <b>சந்திர பாகை</b></td><td><b>{res['moon_deg']}°</b></td></tr>
@@ -166,7 +171,7 @@ def get_p(i): return "".join([f"<span class='planet-text'>{x}</span>" for x in r
 st.markdown(f"""
 <table class="rasi-chart">
     <tr><td><span class='rasi-label'>மீனம்</span>{get_p(11)}</td><td><span class='rasi-label'>மேஷம்</span>{get_p(0)}</td><td><span class='rasi-label'>ரிஷபம்</span>{get_p(1)}</td><td><span class='rasi-label'>மிதுனம்</span>{get_p(2)}</td></tr>
-    <tr><td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td><td colspan="2" rowspan="2" style="background:#fdfdfd; text-align:center; vertical-align:middle; color:#8B0000; font-weight:bold;">AstroGuide<br>ராசி கட்டம்</td><td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td></tr>
+    <tr><td><span class='rasi-label'>கும்பம்</span>{get_p(10)}</td><td colspan="2" rowspan="2" style="background:#fdfdfd; text-align:center; vertical-align:middle; color:#8B0000; font-weight:bold;">AstroGuide<br>கோச்சாரம்</td><td><span class='rasi-label'>கடகம்</span>{get_p(3)}</td></tr>
     <tr><td><span class='rasi-label'>மகரம்</span>{get_p(9)}</td><td><span class='rasi-label'>சிம்மம்</span>{get_p(4)}</td></tr>
     <tr><td><span class='rasi-label'>தனுசு</span>{get_p(8)}</td><td><span class='rasi-label'>விருச்சிகம்</span>{get_p(7)}</td><td><span class='rasi-label'>துலாம்</span>{get_p(6)}</td><td><span class='rasi-label'>கன்னி</span>{get_p(5)}</td></tr>
 </table>
@@ -188,9 +193,8 @@ except: pass
 # ---------------- 9. விசேஷங்கள் ----------------
 st.markdown("<div class='meroon-header'>🪷 இன்றைய விரதங்கள் & விசேஷங்கள்</div>", unsafe_allow_html=True)
 vrat_db = {
-    ("அமாவாசை", None, "மார்கழி"): ["ஸ்ரீ ஹனுமன் ஜெயந்தி", "அஞ்சனை மைந்தனின் அருள் கிட்டும், பயம் நீங்கும்.", "https://img.freepik.com/premium-photo/god-lord-hanuman-statue_1156453-157.jpg"],
-    ("அமாவாசை", None, None): ["அமாவாசை தர்ப்பணம்", "முன்னோர்களின் ஆசி கிட்டும்.", "https://img.freepik.com/premium-photo/hindu-ritual-called-tharpanam-ancestor-worship_1029679-65039.jpg"],
-    ("பௌர்ணமி", None, None): ["பௌர்ணமி விரதம்", "செல்வச் செழிப்பு உண்டாகும்.", "https://img.freepik.com/free-photo/view-bright-full-moon-night-sky_23-2151000305.jpg"]
+    ("அமாவாசை", None, "மார்கழி"): ["ஸ்ரீ ஹனுமன் ஜெயந்தி", "பயம் நீங்கும், அஞ்சனை மைந்தனின் பூரண அருள் கிட்டும்.", "https://img.freepik.com/premium-photo/god-lord-hanuman-statue_1156453-157.jpg"],
+    ("அமாவாசை", None, None): ["அமாவாசை தர்ப்பணம்", "முன்னோர்களின் ஆசி கிட்டும்.", "https://img.freepik.com/premium-photo/hindu-ritual-called-tharpanam-ancestor-worship_1029679-65039.jpg"]
 }
 
 found_v = False
