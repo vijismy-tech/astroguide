@@ -113,10 +113,61 @@ def get_panchangam_engine(date_obj, time_obj, lat, lon):
     karans = ["பவம்", "பாலவம்", "கௌலவம்", "சைதுலை", "கரசை", "வணிசை", "பத்திரை", "சகுனி", "சதுஷ்பாதம்", "நாகவம்", "கிம்ஸ்துக்கினம்"]
     months = ["சித்திரை", "வைகாசி", "ஆனி", "ஆடி", "ஆவணி", "புரட்டாசி", "ஐப்பசி", "கார்த்திகை", "மார்கழி", "தை", "மாசி", "பங்குனி"]
     
+    # பட்சம் விவரம்
     paksham = "வளர்பிறை (சுக்ல பட்சம்)" if t_idx < 15 else "தேய்பிறை (கிருஷ்ண பட்சம்)"
+    
+    # தானியங்கி வருடம்
     y_name = "விசுவாசு" if (date_obj.year > 2025 or (date_obj.year == 2025 and date_obj.month >= 4 and date_obj.day >= 14)) else "குரோதி"
 
-    # சுப மற்றும் கௌரி நல்ல நேரங்கள்
+    # சுப நேரங்கள்
+    weekday = date_obj.weekday()
+    subha_hours = {0: "06:00-07:30 AM", 1: "07:30-09:00 AM", 2: "09:00-10:30 AM", 3: "10:30-12:00 PM", 4: "12:00-01:30 PM", 5: "07:30-09:00 AM", 6: "06:00-07:30 AM"}
+
+    # ராசி கட்டம்
+    p_map = {0: "சூரியன்", 1: "சந்திரன்", 2: "செவ்வாய்", 3: "புதன்", 4: "குரு", 5: "சுக்கிரன்", 6: "சனி", 10: "ராகு"}
+    res_pos = {}
+    for pid, name in p_map.items():
+        pos, _ = swe.calc_ut(jd_current, pid, swe.FLG_SIDEREAL)
+        idx = int(pos[0]/30); v = " <span class='vakra-text'>(வ)</span>" if pos[3] < 0 else ""
+        if idx not in res_pos: res_pos[idx] = []
+        res_pos[idx].append(f"<div class='planet-text'>{name}{v} {int(pos[0]%30)}°</div>")
+        if pid == 10:
+            ki = (idx + 6) % 12
+            if ki not in res_pos: res_pos[ki] = []
+            res_pos[ki].append(f"<div class='planet-text'>கேது {int(pos[0]%30)}°</div>")
+
+    return {
+        "y": y_name, "m": months[int(s_deg/30)%12], "d": int(s_deg%30)+1,
+        "paksham": paksham, "wara": ["திங்கள்", "செவ்வாய்", "புதன்", "வியாழன்", "வெள்ளி", "சனி", "ஞாயிறு"][weekday],
+        "rise": sunrise.strftime("%I:%M %p"), "set": sunset.strftime("%I:%M %p"),
+        "tithi": tithis[t_idx % 30], "t_e": find_end_time(jd_sunrise, t_idx, "t"),
+        "nak": naks[n_idx % 27], "n_idx": n_idx, "n_e": find_end_time(jd_sunrise, n_idx, "n"), "n_next": naks[(n_idx+1)%27],
+        "yoga": yogas[y_idx % 27], "karan": karans[k_idx % 11],
+        "subha": subha_hours[weekday], "abhijit": f"{(mid_day - timedelta(minutes=24)).strftime('%I:%M %p')} - {(mid_day + timedelta(minutes=24)).strftime('%I:%M %p')}",
+        "rahu": ["07:30-09:00", "15:00-16:30", "12:00-13:30", "13:30-15:00", "10:30-12:00", "09:00-10:30", "16:30-18:00"][weekday],
+        "yema": ["10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30", "13:30-15:00", "12:00-13:30"][weekday],
+        "kuli": ["13:30-15:00", "12:00-13:30", "10:30-12:00", "09:00-10:30", "07:30-09:00", "06:00-07:30", "15:00-16:30"][weekday],
+        "chart": res_pos, "f_date": dt_combined.strftime("%d-%m-%Y"), "f_time": dt_combined.strftime("%I:%M %p")
+    }
+
+res = get_panchangam_engine(s_date, s_time, lat, lon)
+
+# ---------- 5. காட்சி அமைப்பு ----------
+
+# பஞ்சாங்கம்
+st.markdown("<div class='meroon-header'>📅 இன்றைய பஞ்சாங்கம் (உதய கால அடிப்படை)</div>", unsafe_allow_html=True)
+st.markdown(f"""
+<table class="panchang-table">
+    <tr><th colspan="2">{s_dist} - {res['wara']}</th></tr>
+    <tr><td>📅 தமிழ் தேதி</td><td><b>{res['y']} வருடம், {res['m']} {res['d']}</b></td></tr>
+    <tr><td>🌗 பட்சம்</td><td><b>{res['paksham']}</b></td></tr>
+    <tr><td>🌙 உதய திதி</td><td><b>{res['tithi']}</b> ({res['t_e']} வரை)</td></tr>
+    <tr><td>⭐ நட்சத்திரம்</td><td><b>{res['nak']}</b> ({res['n_e']} வரை)<br><span class='next-info'>அடுத்து: <b>{res['n_next']}</b></span></td></tr>
+    <tr><td>🌀 யோகம் / கரணம்</td><td><b>{res['yoga']} / {res['karan']}</b></td></tr>
+    <tr><td>☀️ உதயம் / அஸ்தமனம்</td><td>{res['rise']} / {res['set']}</td></tr>
+</table>
+""", unsafe_allow_html=True)
+ # சுப மற்றும் கௌரி நல்ல நேரங்கள்
     weekday = date_obj.weekday()
     subha_hours = {0: "06:00-07:30 AM", 1: "07:30-09:00 AM", 2: "09:00-10:30 AM", 3: "10:30-12:00 PM", 4: "12:00-01:30 PM", 5: "07:30-09:00 AM", 6: "06:00-07:30 AM"}
     gowri_hours = {
@@ -157,35 +208,6 @@ def get_panchangam_engine(date_obj, time_obj, lat, lon):
     }
 
 res = get_panchangam_engine(s_date, s_time, lat, lon)
-
-# ---------- 5. காட்சி அமைப்பு ----------
-
-# பஞ்சாங்கம்
-st.markdown("<div class='meroon-header'>📅 இன்றைய பஞ்சாங்கம் (உதய கால அடிப்படை)</div>", unsafe_allow_html=True)
-st.markdown(f"""
-<table class="panchang-table">
-    <tr><th colspan="2">{s_dist} - {res['wara']}</th></tr>
-    <tr><td>📅 தமிழ் தேதி</td><td><b>{res['y']} வருடம், {res['m']} {res['d']}</b></td></tr>
-    <tr><td>🌗 பட்சம்</td><td><b>{res['paksham']}</b></td></tr>
-    <tr><td>🌙 உதய திதி</td><td><b>{res['tithi']}</b> ({res['t_e']} வரை)</td></tr>
-    <tr><td>⭐ நட்சத்திரம்</td><td><b>{res['nak']}</b> ({res['n_e']} வரை)<br><span class='next-info'>அடுத்து: <b>{res['n_next']}</b></span></td></tr>
-    <tr><td>🌀 யோகம் / கரணம்</td><td><b>{res['yoga']} / {res['karan']}</b></td></tr>
-    <tr><td>☀️ உதயம் / அஸ்தமனம்</td><td>{res['rise']} / {res['set']}</td></tr>
-</table>
-""", unsafe_allow_html=True)
-
-# சுப/அசுப நேரங்கள்
-st.markdown("<div class='meroon-header'>⏳ சுப & அசுப நேரங்கள்</div>", unsafe_allow_html=True)
-st.markdown(f"""
-<table class="panchang-table">
-    <tr class="subha-row"><td>✨ நல்ல நேரம்</td><td><b>{res['subha']}</b></td></tr>
-    <tr class="subha-row"><td>🌟 கௌரி நல்ல நேரம்</td><td><b>{res['gowri']}</b></td></tr>
-    <tr class="subha-row"><td>☀️ அபிஜித் முகூர்த்தம்</td><td><b>{res['abhijit']}</b></td></tr>
-    <tr class="asubha-row"><td>🌑 ராகு காலம்</td><td><b>{res['rahu']}</b></td></tr>
-    <tr class="asubha-row"><td>🔥 எமகண்டம்</td><td><b>{res['yema']}</b></td></tr>
-    <tr class="subha-row"><td>🌀 குளிகை</td><td><b>{res['kuli']}</b></td></tr>
-</table>
-""", unsafe_allow_html=True)
 
 # ராசி கட்டம்
 
